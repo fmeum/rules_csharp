@@ -1,4 +1,4 @@
-"""C# toolchain rule implementation."""
+"""Toolchain implementation for rules_csharp."""
 
 load(":providers.bzl", "CSharpToolchainInfo")
 
@@ -33,16 +33,53 @@ def _csharp_toolchain_impl(ctx):
     ]
 
 csharp_toolchain = rule(
+    doc = "Defines a C# toolchain linking host SDK tools to target framework packs.",
     implementation = _csharp_toolchain_impl,
     attrs = {
-        "dotnet_muxer": attr.label(allow_single_file = True, mandatory = True, cfg = "exec"),
-        "csc_dll": attr.label(allow_single_file = True, mandatory = True, cfg = "exec"),
-        "csc_worker": attr.label(executable = True, allow_single_file = True, cfg = "exec"),
-        "ref_pack": attr.label_list(allow_files = True, cfg = "target"),
-        "host_pack": attr.label(allow_single_file = True, cfg = "target"),
-        "runtime_pack": attr.label_list(allow_files = True, cfg = "target"),
-        "target_framework": attr.string(mandatory = True),
-        "target_rid": attr.string(mandatory = True),
-        "host_rid": attr.string(mandatory = True),
+        "csc_dll": attr.label(
+            allow_single_file = True,
+            cfg = "exec",
+            doc = "Host file for Roslyn csc.dll compiler assembly.",
+            mandatory = True,
+        ),
+        "csc_worker": attr.label(
+            allow_single_file = True,
+            cfg = "exec",
+            doc = "Host executable file for persistent multiplex worker.",
+            executable = True,
+        ),
+        "dotnet_muxer": attr.label(
+            allow_single_file = True,
+            cfg = "exec",
+            doc = "Host executable file for dotnet driver binary.",
+            mandatory = True,
+        ),
+        "host_pack": attr.label(
+            allow_single_file = True,
+            cfg = "target",
+            doc = "Native application host binary template file for target platform.",
+        ),
+        "host_rid": attr.string(
+            doc = "Host runtime identifier string.",
+            mandatory = True,
+        ),
+        "ref_pack": attr.label_list(
+            allow_files = True,
+            cfg = "target",
+            doc = "Reference assembly files for target framework.",
+        ),
+        "runtime_pack": attr.label_list(
+            allow_files = True,
+            cfg = "target",
+            doc = "Runtime assembly files for target framework.",
+        ),
+        "target_framework": attr.string(
+            doc = "Target framework moniker string.",
+            mandatory = True,
+        ),
+        "target_rid": attr.string(
+            doc = "Target runtime identifier string.",
+            mandatory = True,
+        ),
     },
 )
