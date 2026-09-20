@@ -1,36 +1,36 @@
-"""C# Providers for rules_csharp."""
+"""Providers for compilation, tooling, and runtime artifacts."""
 
 CSharpInfo = provider(
-    doc = "Provider for C# compilation and runtime artifacts.",
+    doc = "Propagates compilation references, runtime assemblies, and unmanaged libraries.",
     fields = {
-        "target_framework": "string: Target framework moniker (e.g., 'net8.0', 'net9.0', 'net10.0')",
-        "compile_ref": "File: The metadata-only .ref.dll produced by -refout",
-        "runtime_dll": "File: The full implementation .dll",
-        "pdb": "File: The portable .pdb symbol file",
-        "transitive_compile_refs": "depset[File]: Transitive compile-time reference assemblies (preorder)",
-        "transitive_runtime_dlls": "depset[File]: Transitive implementation assemblies (preorder)",
-        "transitive_native_libs": "depset[File]: Unmanaged RID-specific shared libraries",
+        "compile_ref": "Metadata-only reference assembly File produced by -refout.",
+        "pdb": "Portable program database symbol File.",
+        "runtime_dll": "Implementation assembly File.",
+        "target_framework": "Target framework moniker string (for example net8.0).",
+        "transitive_compile_refs": "Depset of reference assembly Files for compilation.",
+        "transitive_native_libs": "Depset of target platform unmanaged shared libraries.",
+        "transitive_runtime_dlls": "Depset of runtime assembly Files for execution.",
     },
 )
 
 CSharpAnalyzerInfo = provider(
-    doc = "Provider holding Roslyn analyzer and IIncrementalGenerator DLLs.",
+    doc = "Propagates Roslyn analyzer and source generator assembly files.",
     fields = {
-        "analyzers": "depset[File]: Roslyn analyzer and source generator DLLs",
+        "analyzers": "Depset of Roslyn analyzer and generator assembly Files.",
     },
 )
 
 CSharpToolchainInfo = provider(
-    doc = "Provider holding the resolved C# toolchain configuration and tools.",
+    doc = "Defines resolved C# SDK tools, packs, and target monikers.",
     fields = {
-        "dotnet_muxer": "File: Platform-specific dotnet binary",
-        "csc_dll": "File: Roslyn csc.dll compiler",
-        "csc_worker": "File: Persistent multiplex worker executable (optional)",
-        "ref_pack": "depset[File]: Reference assemblies for target framework",
-        "host_pack": "File: Native apphost binary template for target platform",
-        "runtime_pack": "depset[File]: Runtime assemblies and libraries for target platform",
-        "target_framework": "string: Target framework moniker",
-        "target_rid": "string: Target RID (e.g., 'osx-arm64', 'linux-x64')",
-        "host_rid": "string: Host RID",
+        "csc_dll": "Host File for Roslyn compiler assembly.",
+        "csc_worker": "Host executable File for persistent compilation worker.",
+        "dotnet_muxer": "Host executable File for dotnet driver.",
+        "host_pack": "Binary template File for target platform application host.",
+        "host_rid": "Host runtime identifier string.",
+        "ref_pack": "Depset of reference assembly Files for target framework.",
+        "runtime_pack": "Depset of runtime assembly Files for target platform.",
+        "target_framework": "Target framework moniker string.",
+        "target_rid": "Target runtime identifier string.",
     },
 )
