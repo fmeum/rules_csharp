@@ -1,0 +1,30 @@
+load("//csharp:defs.bzl", "csharp_library")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(glob(["*"]))
+
+csharp_library(
+    name = "apphost_patcher",
+    srcs = ["AppHostPatcher.cs"],
+    target_type = "exe",
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "apphost_patcher_runtimeconfig",
+    outs = ["apphost_patcher.runtimeconfig.json"],
+    cmd = """cat << 'EOF' > $@
+{
+  "runtimeOptions": {
+    "tfm": "net8.0",
+    "rollForward": "LatestMajor",
+    "framework": {
+      "name": "Microsoft.NETCore.App",
+      "version": "8.0.0"
+    }
+  }
+}
+EOF""",
+    visibility = ["//visibility:public"],
+)
