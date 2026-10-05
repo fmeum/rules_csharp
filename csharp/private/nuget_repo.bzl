@@ -1,4 +1,11 @@
-"""Repository rules for NuGet packages and NuGet hub."""
+"""Repository rules for NuGet packages and hub target declarations."""
+
+load(
+    "@bazel_tools//tools/build_defs/repo:utils.bzl",
+    "read_netrc",
+    "read_user_netrc",
+    "use_netrc",
+)
 
 TFM_PRECEDENCE = [
     "net10.0",
@@ -134,18 +141,70 @@ def _nuget_package_repo_impl(repository_ctx):
     id_lower = pkg_id.lower()
     ver_lower = version.lower()
 
-    url = "https://api.nuget.org/v3-flatcontainer/{}/{}/{}.{}.nupkg".format(
+    configured_feeds = list(repository_ctx.attr.feeds)
+    if not configured_feeds:
+        configured_feeds = ["https://api.nuget.org/v3-flatcontainer"]
+
+    candidate_urls = []
+
+    for local_dir in repository_ctx.attr.local_package_dirs:
+        clean_dir = local_dir[:-1] if local_dir.endswith("/") else local_dir
+        if not clean_dir.startswith("file://"):
+            clean_dir = "file://" + clean_dir
+        candidate_urls.append("{}/{}.{}.nupkg".format(clean_dir, pkg_id, version))
+        candidate_urls.append("{}/{}.{}.nupkg".format(clean_dir, id_lower, version))
+        candidate_urls.append("{}/{}/{}/{}.{}.nupkg".format(clean_dir, id_lower, version, id_lower, version))
+
+    for feed in configured_feeds:
+        clean_feed = feed[:-1] if feed.endswith("/") else feed
+        if clean_feed.endswith("/index.json"):
+            clean_feed = clean_feed[:-len("/index.json")]
+
+        candidate_urls.append("{}/{}/{}/{}.{}.nupkg".format(
+            clean_feed,
+            id_lower,
+            ver_lower,
+            id_lower,
+            ver_lower,
+        ))
+        candidate_urls.append("{}/{}/{}/{}.{}.nupkg".format(
+            clean_feed,
+            pkg_id,
+            version,
+            pkg_id,
+            version,
+        ))
+        candidate_urls.append("{}/Download/{}/{}".format(
+            clean_feed,
+            pkg_id,
+            version,
+        ))
+
+    official_flat = "https://api.nuget.org/v3-flatcontainer/{}/{}/{}.{}.nupkg".format(
         id_lower,
         ver_lower,
         id_lower,
         ver_lower,
     )
+    if official_flat not in candidate_urls:
+        candidate_urls.append(official_flat)
 
+    if repository_ctx.attr.netrc:
+        netrc_data = read_netrc(repository_ctx, repository_ctx.attr.netrc)
+    elif "NETRC" in repository_ctx.os.environ:
+        netrc_data = read_netrc(repository_ctx, repository_ctx.os.environ["NETRC"])
+    else:
+        netrc_data = read_user_netrc(repository_ctx)
+
+    auth_patterns = repository_ctx.attr.auth_patterns if hasattr(repository_ctx.attr, "auth_patterns") else {}
+    auth = use_netrc(netrc_data, candidate_urls, auth_patterns)
     integrity = "sha512-" + content_hash if content_hash else ""
+
     repository_ctx.download_and_extract(
-        url = url,
+        url = candidate_urls,
         type = "zip",
         integrity = integrity,
+        auth = auth,
     )
 
     # 1. Compile references: ref/<tfm>/ falling back to lib/<tfm>/
@@ -266,19 +325,42 @@ def _nuget_package_repo_impl(repository_ctx):
     repository_ctx.file("BUILD.bazel", "\n".join(lines) + "\n")
 
 nuget_package_repo = repository_rule(
+    doc = "Downloads and extracts individual NuGet packages and generates target definitions.",
     implementation = _nuget_package_repo_impl,
     attrs = {
-        "package_id": attr.string(mandatory = True),
-        "version": attr.string(mandatory = True),
-        "content_hash": attr.string(default = ""),
-        "dependencies": attr.string_list(default = []),
+        "auth_patterns": attr.string_dict(
+            doc = "Host to authentication pattern mappings.",
+        ),
+        "content_hash": attr.string(
+            doc = "Base64-encoded SHA-512 package content hash.",
+        ),
+        "dependencies": attr.string_list(
+            doc = "Direct dependency package identifier list.",
+        ),
+        "feeds": attr.string_list(
+            doc = "Candidate package feed URLs.",
+        ),
+        "local_package_dirs": attr.string_list(
+            doc = "Local filesystem package directory paths.",
+        ),
+        "netrc": attr.label(
+            doc = "Authentication netrc configuration file label.",
+        ),
+        "package_id": attr.string(
+            doc = "NuGet package identifier string.",
+            mandatory = True,
+        ),
+        "version": attr.string(
+            doc = "NuGet package version string.",
+            mandatory = True,
+        ),
     },
 )
 
 def _nuget_hub_repo_impl(repository_ctx):
     packages = repository_ctx.attr.packages
     lines = [
-        '"""Generated hub BUILD.bazel for NuGet packages"""',
+        '"""Generated hub BUILD.bazel for NuGet packages."""',
         'package(default_visibility = ["//visibility:public"])',
         '',
     ]
@@ -308,8 +390,12 @@ def _nuget_hub_repo_impl(repository_ctx):
     repository_ctx.file("BUILD.bazel", "\n".join(lines) + "\n")
 
 nuget_hub_repo = repository_rule(
+    doc = "Generates package alias targets mapping canonical package names to individual package repos.",
     implementation = _nuget_hub_repo_impl,
     attrs = {
-        "packages": attr.string_dict(default = {}),
+        "packages": attr.string_dict(
+            doc = "Mapping from package identifier to repository name.",
+        ),
     },
 )
+
