@@ -1,0 +1,54 @@
+load("//csharp:defs.bzl", "csharp_binary", "csharp_library")
+load(
+    ":action_graph_tests.bzl",
+    "abi_refout_action_test",
+    "cross_linux_action_test",
+    "cross_windows_action_test",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+csharp_library(
+    name = "lib_a",
+    srcs = ["LibA.cs"],
+)
+
+csharp_library(
+    name = "lib_b",
+    srcs = ["LibB.cs"],
+    deps = [":lib_a"],
+)
+
+csharp_binary(
+    name = "cross_app",
+    srcs = ["CrossApp.cs"],
+)
+
+abi_refout_action_test(
+    name = "abi_refout_action_test",
+    target_under_test = ":lib_b",
+)
+
+cross_windows_action_test(
+    name = "cross_windows_action_test",
+    target_under_test = ":cross_app",
+)
+
+cross_linux_action_test(
+    name = "cross_linux_action_test",
+    target_under_test = ":cross_app",
+)
+
+load("//tests/integration:test_helpers.bzl", "shell_test")
+
+# Section 11: Clinical Documentation Standards and Anti-Slop Enforcement
+shell_test(
+    name = "clinical_docs_test",
+    src = "clinical_docs_test.sh",
+    data = [
+        "//:README.md",
+        "//csharp:bzl_srcs",
+        "//csharp:docs",
+    ],
+)
+

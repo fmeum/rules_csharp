@@ -1,0 +1,119 @@
+load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
+
+
+def _abi_refout_action_test_impl(ctx):
+    env = analysistest.begin(ctx)
+
+    actions = analysistest.target_actions(env)
+    compile_actions = [a for a in actions if a.mnemonic == "CSharpCompile"]
+    asserts.equals(env, 1, len(compile_actions))
+
+    compile_action = compile_actions[0]
+    input_basenames = [f.basename for f in compile_action.inputs.to_list()]
+
+    # Invariant 1: lib_a.ref.dll MUST be in inputs
+    asserts.true(
+        env,
+        "lib_a.ref.dll" in input_basenames,
+        "Expected lib_a.ref.dll in compile inputs, got: %s" % input_basenames,
+    )
+
+    # Invariant 1: lib_a.dll MUST NOT be in inputs
+    asserts.false(
+        env,
+        "lib_a.dll" in input_basenames,
+        "Expected lib_a.dll to be absent from compile inputs, but found in: %s" % input_basenames,
+    )
+
+    return analysistest.end(env)
+
+abi_refout_action_test = analysistest.make(_abi_refout_action_test_impl)
+
+def _cross_windows_action_test_impl(ctx):
+    env = analysistest.begin(ctx)
+
+    actions = analysistest.target_actions(env)
+    compile_actions = [a for a in actions if a.mnemonic == "CSharpCompile"]
+    asserts.equals(env, 1, len(compile_actions))
+    compile_action = compile_actions[0]
+
+    # Invariant 3: uses host csc.dll
+    compile_input_basenames = [f.basename for f in compile_action.inputs.to_list()]
+    asserts.true(
+        env,
+        "csc.dll" in compile_input_basenames,
+        "Expected host csc.dll in compile inputs",
+    )
+
+    # Invariant 3: uses target apphost.exe template
+    patch_actions = [a for a in actions if a.mnemonic == "CSharpAppHostPatch"]
+    asserts.equals(env, 1, len(patch_actions))
+    patch_action = patch_actions[0]
+
+    patch_inputs = [f.basename for f in patch_action.inputs.to_list()]
+    asserts.true(
+        env,
+        "apphost.exe" in patch_inputs,
+        "Expected Windows apphost.exe template in AppHostPatch inputs, got: %s" % patch_inputs,
+    )
+
+    patch_outputs = [f.basename for f in patch_action.outputs.to_list()]
+    asserts.true(
+        env,
+        any([out.endswith(".exe") for out in patch_outputs]),
+        "Expected .exe output for Windows binary, got: %s" % patch_outputs,
+    )
+
+    return analysistest.end(env)
+
+cross_windows_action_test = analysistest.make(
+    _cross_windows_action_test_impl,
+    config_settings = {
+        "//command_line_option:platforms": str(Label("//csharp/constraints:windows_x64_platform")),
+    },
+)
+
+def _cross_linux_action_test_impl(ctx):
+    env = analysistest.begin(ctx)
+
+    actions = analysistest.target_actions(env)
+    compile_actions = [a for a in actions if a.mnemonic == "CSharpCompile"]
+    asserts.equals(env, 1, len(compile_actions))
+    compile_action = compile_actions[0]
+
+    # Invariant 3: uses host csc.dll
+    compile_input_basenames = [f.basename for f in compile_action.inputs.to_list()]
+    asserts.true(
+        env,
+        "csc.dll" in compile_input_basenames,
+        "Expected host csc.dll in compile inputs",
+    )
+
+    # Invariant 3: uses Linux apphost template (non-.exe)
+    patch_actions = [a for a in actions if a.mnemonic == "CSharpAppHostPatch"]
+    asserts.equals(env, 1, len(patch_actions))
+    patch_action = patch_actions[0]
+
+    patch_inputs = [f.basename for f in patch_action.inputs.to_list()]
+    asserts.true(
+        env,
+        "apphost" in patch_inputs,
+        "Expected Linux apphost template in AppHostPatch inputs, got: %s" % patch_inputs,
+    )
+
+    patch_outputs = [f.basename for f in patch_action.outputs.to_list()]
+    asserts.false(
+        env,
+        any([out.endswith(".exe") for out in patch_outputs]),
+        "Expected non-.exe output for Linux binary, got: %s" % patch_outputs,
+    )
+
+    return analysistest.end(env)
+
+cross_linux_action_test = analysistest.make(
+    _cross_linux_action_test_impl,
+    config_settings = {
+        "//command_line_option:platforms": str(Label("//csharp/constraints:linux_x64_platform")),
+    },
+)
+

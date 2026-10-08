@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "CommandLineParser": {
+        "type": "Direct",
+        "requested": "[2.9.1, )",
+        "resolved": "2.9.1",
+        "contentHash": "TzZORclmjH58xqkitIjz+lIwM8INekMmlPCmrwXOUo6gSB2DdeL08QMsaZA0e0gDzpoOSAaMb+FexG+xJU8IXQ==",
+        "dependencies": {}
+      },
+      "PolySharp": {
+        "type": "Direct",
+        "requested": "[1.14.1, )",
+        "resolved": "1.14.1",
+        "contentHash": "EOgPDkmNZpfHDo407lseoTt2UYRXzuIErP5MjA9bbJcaVEymbzI8yBNldtM32uzszJgdpbJkfO5EtryMP+ZaMA==",
+        "dependencies": {}
+      },
+      "Riok.Mapperly": {
+        "type": "Direct",
+        "requested": "[3.6.0, )",
+        "resolved": "3.6.0",
+        "contentHash": "BL3ZLJxNoGGagdsMfGLt1JBNxzpcx1Cx4H2d+ryS5d/s6pmydwkDBZyfag2B6knPfLS8xTchRvuJ2JA+9x48mA==",
+        "dependencies": {}
+      }
+    }
+  }
+}
