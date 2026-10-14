@@ -1,0 +1,6 @@
+{
+  "integrity": "sha256-{INTEGRITY}",
+  "patch_strip": 0,
+  "strip_prefix": "rules_csharp-{VERSION}",
+  "url": "https://github.com/rulescsharp/rules_csharp/releases/download/v{VERSION}/rules_csharp-v{VERSION}.tar.gz"
+}

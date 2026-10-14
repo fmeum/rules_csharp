@@ -1,0 +1,17 @@
+matrix:
+  platform:
+    - debian11
+    - ubuntu2004
+    - macos
+    - windows
+tasks:
+  build_targets:
+    name: "Build targets"
+    platform: ${{ platform }}
+    build_targets:
+      - "//..."
+  test_targets:
+    name: "Run tests"
+    platform: ${{ platform }}
+    test_targets:
+      - "//..."

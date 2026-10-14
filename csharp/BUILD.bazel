@@ -1,8 +1,81 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@stardoc//stardoc:stardoc.bzl", "stardoc")
+load("//csharp:defs.bzl", "csharp_binary")
+
 package(default_visibility = ["//visibility:public"])
 
 exports_files(glob(["*.bzl"]))
+
+filegroup(
+    name = "bzl_srcs",
+    srcs = glob(["*.bzl"]) + ["//csharp/private:bzl_srcs"],
+    visibility = ["//visibility:public"],
+)
 
 toolchain_type(
     name = "toolchain_type",
     visibility = ["//visibility:public"],
 )
+
+csharp_binary(
+    name = "sync",
+    srcs = ["//csharp/private/tools:CsprojSync.cs"],
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "defs_bzl",
+    srcs = ["defs.bzl"],
+    deps = [
+        "//csharp/private:binary_bzl",
+        "//csharp/private:compile_bzl",
+        "//csharp/private:providers_bzl",
+    ],
+)
+
+bzl_library(
+    name = "toolchains_bzl",
+    srcs = ["toolchains.bzl"],
+    deps = [
+        "//csharp/private:toolchain_impl_bzl",
+        "@bazel_tools//tools/build_defs/repo:utils.bzl",
+    ],
+)
+
+bzl_library(
+    name = "extensions_bzl",
+    srcs = ["extensions.bzl"],
+    deps = [
+        ":toolchains_bzl",
+        "//csharp/private:nuget_repo_bzl",
+    ],
+)
+
+stardoc(
+    name = "defs_doc",
+    out = "defs_doc.md",
+    input = "defs.bzl",
+    deps = [":defs_bzl"],
+)
+
+stardoc(
+    name = "toolchains_doc",
+    out = "toolchains_doc.md",
+    input = "toolchains.bzl",
+    deps = [":toolchains_bzl"],
+)
+
+stardoc(
+    name = "extensions_doc",
+    out = "extensions_doc.md",
+    input = "extensions.bzl",
+    deps = [":extensions_bzl"],
+)
+
+stardoc(
+    name = "docs",
+    out = "README.md",
+    input = "defs.bzl",
+    deps = [":defs_bzl"],
+)
+

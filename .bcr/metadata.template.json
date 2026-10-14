@@ -1,0 +1,15 @@
+{
+  "homepage": "https://github.com/rulescsharp/rules_csharp",
+  "maintainers": [
+    {
+      "email": "rulescsharp@gmail.com",
+      "github": "rulescsharp",
+      "name": "rulescsharp"
+    }
+  ],
+  "repository": [
+    "github:rulescsharp/rules_csharp"
+  ],
+  "versions": [],
+  "yanked_versions": {}
+}

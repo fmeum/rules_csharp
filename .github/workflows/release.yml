@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Package release archive and compute SRI
+        id: package
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          ARCHIVE="rules_csharp-${TAG}.tar.gz"
+          git archive --format=tar.gz --prefix="rules_csharp-${VERSION}/" "${TAG}" > "${ARCHIVE}"
+          INTEGRITY="sha256-$(openssl dgst -sha256 -binary "${ARCHIVE}" | base64 | tr -d '\n')"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "archive=${ARCHIVE}" >> $GITHUB_OUTPUT
+          echo "integrity=${INTEGRITY}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        run: |
+          cat << 'EOF' > release_notes.md
+          ## Using Bzlmod
+
+          Add to `MODULE.bazel`:
+
+          ```starlark
+          bazel_dep(name = "rules_csharp", version = "${{ steps.package.outputs.version }}")
+          archive_override(
+              module_name = "rules_csharp",
+              urls = ["https://github.com/rulescsharp/rules_csharp/releases/download/${{ steps.package.outputs.tag }}/${{ steps.package.outputs.archive }}"],
+              strip_prefix = "rules_csharp-${{ steps.package.outputs.version }}",
+              integrity = "${{ steps.package.outputs.integrity }}",
+          )
+          ```
+          EOF
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.package.outputs.tag }}" \
+            "${{ steps.package.outputs.archive }}" \
+            MODULE.bazel \
+            --title "${{ steps.package.outputs.tag }}" \
+            --notes-file release_notes.md
