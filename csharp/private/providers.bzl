@@ -23,8 +23,10 @@ CSharpAnalyzerInfo = provider(
 CSharpToolchainInfo = provider(
     doc = "Defines resolved C# SDK tools, packs, and target monikers.",
     fields = {
+        "aspnetcore_ref_pack": "Depset of reference assembly Files for Microsoft.AspNetCore.App.",
         "csc_dll": "Host File for Roslyn compiler assembly.",
         "csc_worker": "Host executable File for persistent compilation worker.",
+        "csc_worker_files": "Depset of files required by csc_worker.",
         "dotnet_muxer": "Host executable File for dotnet driver.",
         "host_pack": "Binary template File for target platform application host.",
         "host_rid": "Host runtime identifier string.",

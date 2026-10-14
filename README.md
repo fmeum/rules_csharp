@@ -32,7 +32,7 @@ Imports precompiled Roslyn analyzer and source generator assemblies.
 load("@rules_csharp//csharp:defs.bzl", "csharp_analyzer_library")
 
 csharp_analyzer_library(<a href="#csharp_analyzer_library-name">name</a>, <a href="#csharp_analyzer_library-deps">deps</a>, <a href="#csharp_analyzer_library-srcs">srcs</a>, <a href="#csharp_analyzer_library-resources">resources</a>, <a href="#csharp_analyzer_library-analyzers">analyzers</a>, <a href="#csharp_analyzer_library-compile_refs">compile_refs</a>, <a href="#csharp_analyzer_library-defines">defines</a>, <a href="#csharp_analyzer_library-dlls">dlls</a>,
-                        <a href="#csharp_analyzer_library-exports">exports</a>, <a href="#csharp_analyzer_library-native_libs">native_libs</a>, <a href="#csharp_analyzer_library-nowarn">nowarn</a>, <a href="#csharp_analyzer_library-plugins">plugins</a>, <a href="#csharp_analyzer_library-runtime_dlls">runtime_dlls</a>, <a href="#csharp_analyzer_library-target_framework">target_framework</a>,
+                        <a href="#csharp_analyzer_library-exports">exports</a>, <a href="#csharp_analyzer_library-native_libs">native_libs</a>, <a href="#csharp_analyzer_library-nowarn">nowarn</a>, <a href="#csharp_analyzer_library-plugins">plugins</a>, <a href="#csharp_analyzer_library-runtime_dlls">runtime_dlls</a>, <a href="#csharp_analyzer_library-sdk">sdk</a>, <a href="#csharp_analyzer_library-target_framework">target_framework</a>,
                         <a href="#csharp_analyzer_library-target_type">target_type</a>)
 </pre>
 
@@ -56,6 +56,7 @@ Compiles Roslyn analyzer or source generator assemblies.
 | <a id="csharp_analyzer_library-nowarn"></a>nowarn |  Compiler diagnostic codes to suppress.   | List of strings | optional |  `[]`  |
 | <a id="csharp_analyzer_library-plugins"></a>plugins |  Roslyn analyzer and generator plugins.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="csharp_analyzer_library-runtime_dlls"></a>runtime_dlls |  Precompiled runtime implementation assembly DLL files.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
+| <a id="csharp_analyzer_library-sdk"></a>sdk |  Target .NET SDK project flavor.   | String | optional |  `"Microsoft.NET.Sdk"`  |
 | <a id="csharp_analyzer_library-target_framework"></a>target_framework |  Target framework moniker string.   | String | optional |  `""`  |
 | <a id="csharp_analyzer_library-target_type"></a>target_type |  Compiler target type output flag.   | String | optional |  `"library"`  |
 
@@ -67,7 +68,7 @@ Compiles Roslyn analyzer or source generator assemblies.
 <pre>
 load("@rules_csharp//csharp:defs.bzl", "csharp_binary")
 
-csharp_binary(<a href="#csharp_binary-name">name</a>, <a href="#csharp_binary-deps">deps</a>, <a href="#csharp_binary-srcs">srcs</a>, <a href="#csharp_binary-resources">resources</a>, <a href="#csharp_binary-defines">defines</a>, <a href="#csharp_binary-exports">exports</a>, <a href="#csharp_binary-nowarn">nowarn</a>, <a href="#csharp_binary-plugins">plugins</a>, <a href="#csharp_binary-target_framework">target_framework</a>,
+csharp_binary(<a href="#csharp_binary-name">name</a>, <a href="#csharp_binary-deps">deps</a>, <a href="#csharp_binary-srcs">srcs</a>, <a href="#csharp_binary-resources">resources</a>, <a href="#csharp_binary-defines">defines</a>, <a href="#csharp_binary-exports">exports</a>, <a href="#csharp_binary-nowarn">nowarn</a>, <a href="#csharp_binary-plugins">plugins</a>, <a href="#csharp_binary-sdk">sdk</a>, <a href="#csharp_binary-target_framework">target_framework</a>,
               <a href="#csharp_binary-target_type">target_type</a>)
 </pre>
 
@@ -86,6 +87,7 @@ Compiles a C# executable and stamps the native application host binary.
 | <a id="csharp_binary-exports"></a>exports |  Dependencies exported to downstream consumers.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="csharp_binary-nowarn"></a>nowarn |  Compiler diagnostic codes to suppress.   | List of strings | optional |  `[]`  |
 | <a id="csharp_binary-plugins"></a>plugins |  Roslyn analyzer and generator plugins.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
+| <a id="csharp_binary-sdk"></a>sdk |  Target .NET SDK project flavor.   | String | optional |  `"Microsoft.NET.Sdk"`  |
 | <a id="csharp_binary-target_framework"></a>target_framework |  Target framework moniker string.   | String | optional |  `""`  |
 | <a id="csharp_binary-target_type"></a>target_type |  Compiler target type output flag.   | String | optional |  `"exe"`  |
 
@@ -128,7 +130,7 @@ Imports precompiled reference and implementation assemblies.
 load("@rules_csharp//csharp:defs.bzl", "csharp_library")
 
 csharp_library(<a href="#csharp_library-name">name</a>, <a href="#csharp_library-deps">deps</a>, <a href="#csharp_library-srcs">srcs</a>, <a href="#csharp_library-resources">resources</a>, <a href="#csharp_library-analyzers">analyzers</a>, <a href="#csharp_library-compile_refs">compile_refs</a>, <a href="#csharp_library-defines">defines</a>, <a href="#csharp_library-dlls">dlls</a>, <a href="#csharp_library-exports">exports</a>,
-               <a href="#csharp_library-native_libs">native_libs</a>, <a href="#csharp_library-nowarn">nowarn</a>, <a href="#csharp_library-plugins">plugins</a>, <a href="#csharp_library-runtime_dlls">runtime_dlls</a>, <a href="#csharp_library-target_framework">target_framework</a>, <a href="#csharp_library-target_type">target_type</a>)
+               <a href="#csharp_library-native_libs">native_libs</a>, <a href="#csharp_library-nowarn">nowarn</a>, <a href="#csharp_library-plugins">plugins</a>, <a href="#csharp_library-runtime_dlls">runtime_dlls</a>, <a href="#csharp_library-sdk">sdk</a>, <a href="#csharp_library-target_framework">target_framework</a>, <a href="#csharp_library-target_type">target_type</a>)
 </pre>
 
 Compiles C# source files into reference and implementation assemblies.
@@ -151,6 +153,7 @@ Compiles C# source files into reference and implementation assemblies.
 | <a id="csharp_library-nowarn"></a>nowarn |  Compiler diagnostic codes to suppress.   | List of strings | optional |  `[]`  |
 | <a id="csharp_library-plugins"></a>plugins |  Roslyn analyzer and generator plugins.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="csharp_library-runtime_dlls"></a>runtime_dlls |  Precompiled runtime implementation assembly DLL files.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
+| <a id="csharp_library-sdk"></a>sdk |  Target .NET SDK project flavor.   | String | optional |  `"Microsoft.NET.Sdk"`  |
 | <a id="csharp_library-target_framework"></a>target_framework |  Target framework moniker string.   | String | optional |  `""`  |
 | <a id="csharp_library-target_type"></a>target_type |  Compiler target type output flag.   | String | optional |  `"library"`  |
 
@@ -162,7 +165,7 @@ Compiles C# source files into reference and implementation assemblies.
 <pre>
 load("@rules_csharp//csharp:defs.bzl", "csharp_test")
 
-csharp_test(<a href="#csharp_test-name">name</a>, <a href="#csharp_test-deps">deps</a>, <a href="#csharp_test-srcs">srcs</a>, <a href="#csharp_test-resources">resources</a>, <a href="#csharp_test-defines">defines</a>, <a href="#csharp_test-exports">exports</a>, <a href="#csharp_test-nowarn">nowarn</a>, <a href="#csharp_test-plugins">plugins</a>, <a href="#csharp_test-target_framework">target_framework</a>,
+csharp_test(<a href="#csharp_test-name">name</a>, <a href="#csharp_test-deps">deps</a>, <a href="#csharp_test-srcs">srcs</a>, <a href="#csharp_test-resources">resources</a>, <a href="#csharp_test-defines">defines</a>, <a href="#csharp_test-exports">exports</a>, <a href="#csharp_test-nowarn">nowarn</a>, <a href="#csharp_test-plugins">plugins</a>, <a href="#csharp_test-sdk">sdk</a>, <a href="#csharp_test-target_framework">target_framework</a>,
             <a href="#csharp_test-target_type">target_type</a>)
 </pre>
 
@@ -181,6 +184,7 @@ Compiles and executes a C# test binary under the Bazel test harness.
 | <a id="csharp_test-exports"></a>exports |  Dependencies exported to downstream consumers.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="csharp_test-nowarn"></a>nowarn |  Compiler diagnostic codes to suppress.   | List of strings | optional |  `[]`  |
 | <a id="csharp_test-plugins"></a>plugins |  Roslyn analyzer and generator plugins.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
+| <a id="csharp_test-sdk"></a>sdk |  Target .NET SDK project flavor.   | String | optional |  `"Microsoft.NET.Sdk"`  |
 | <a id="csharp_test-target_framework"></a>target_framework |  Target framework moniker string.   | String | optional |  `""`  |
 | <a id="csharp_test-target_type"></a>target_type |  Compiler target type output flag.   | String | optional |  `"exe"`  |
 
@@ -237,8 +241,8 @@ Propagates compilation references, runtime assemblies, and unmanaged libraries.
 <pre>
 load("@rules_csharp//csharp:defs.bzl", "CSharpToolchainInfo")
 
-CSharpToolchainInfo(<a href="#CSharpToolchainInfo-csc_dll">csc_dll</a>, <a href="#CSharpToolchainInfo-csc_worker">csc_worker</a>, <a href="#CSharpToolchainInfo-dotnet_muxer">dotnet_muxer</a>, <a href="#CSharpToolchainInfo-host_pack">host_pack</a>, <a href="#CSharpToolchainInfo-host_rid">host_rid</a>, <a href="#CSharpToolchainInfo-ref_pack">ref_pack</a>, <a href="#CSharpToolchainInfo-runtime_pack">runtime_pack</a>,
-                    <a href="#CSharpToolchainInfo-target_framework">target_framework</a>, <a href="#CSharpToolchainInfo-target_rid">target_rid</a>)
+CSharpToolchainInfo(<a href="#CSharpToolchainInfo-aspnetcore_ref_pack">aspnetcore_ref_pack</a>, <a href="#CSharpToolchainInfo-csc_dll">csc_dll</a>, <a href="#CSharpToolchainInfo-csc_worker">csc_worker</a>, <a href="#CSharpToolchainInfo-csc_worker_files">csc_worker_files</a>, <a href="#CSharpToolchainInfo-dotnet_muxer">dotnet_muxer</a>,
+                    <a href="#CSharpToolchainInfo-host_pack">host_pack</a>, <a href="#CSharpToolchainInfo-host_rid">host_rid</a>, <a href="#CSharpToolchainInfo-ref_pack">ref_pack</a>, <a href="#CSharpToolchainInfo-runtime_pack">runtime_pack</a>, <a href="#CSharpToolchainInfo-target_framework">target_framework</a>, <a href="#CSharpToolchainInfo-target_rid">target_rid</a>)
 </pre>
 
 Defines resolved C# SDK tools, packs, and target monikers.
@@ -247,8 +251,10 @@ Defines resolved C# SDK tools, packs, and target monikers.
 
 | Name  | Description |
 | :------------- | :------------- |
+| <a id="CSharpToolchainInfo-aspnetcore_ref_pack"></a>aspnetcore_ref_pack |  Depset of reference assembly Files for Microsoft.AspNetCore.App.    |
 | <a id="CSharpToolchainInfo-csc_dll"></a>csc_dll |  Host File for Roslyn compiler assembly.    |
 | <a id="CSharpToolchainInfo-csc_worker"></a>csc_worker |  Host executable File for persistent compilation worker.    |
+| <a id="CSharpToolchainInfo-csc_worker_files"></a>csc_worker_files |  Depset of files required by csc_worker.    |
 | <a id="CSharpToolchainInfo-dotnet_muxer"></a>dotnet_muxer |  Host executable File for dotnet driver.    |
 | <a id="CSharpToolchainInfo-host_pack"></a>host_pack |  Binary template File for target platform application host.    |
 | <a id="CSharpToolchainInfo-host_rid"></a>host_rid |  Host runtime identifier string.    |

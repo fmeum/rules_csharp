@@ -45,7 +45,16 @@ namespace RulesCsharp.Tools
 
             if (persistentWorker)
             {
-                RunWorkerLoop();
+                int requestsHandled = RunWorkerLoop();
+                if (requestsHandled == 0 && passthroughArgs.Count > 0)
+                {
+                    var (exitCode, output) = ExecuteCompilation(passthroughArgs.ToArray());
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        Console.Error.Write(output);
+                    }
+                    return exitCode;
+                }
                 return 0;
             }
             else
@@ -100,6 +109,23 @@ namespace RulesCsharp.Tools
                         break;
                     }
                 }
+
+                if (string.IsNullOrEmpty(roslynDir) || !Directory.Exists(roslynDir))
+                {
+                    string sdkDir = Path.Combine(baseDir, "sdk");
+                    if (Directory.Exists(sdkDir))
+                    {
+                        foreach (var s in Directory.GetDirectories(sdkDir))
+                        {
+                            string r = Path.Combine(s, "Roslyn", "bincore");
+                            if (Directory.Exists(r))
+                            {
+                                roslynDir = r;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             if (string.IsNullOrEmpty(roslynDir) || !Directory.Exists(roslynDir))
@@ -109,6 +135,16 @@ namespace RulesCsharp.Tools
 
             string csharpDll = Path.Combine(roslynDir, "Microsoft.CodeAnalysis.CSharp.dll");
             string cscDll = Path.Combine(roslynDir, "csc.dll");
+
+            AssemblyLoadContext.Default.Resolving += (context, assemblyName) =>
+            {
+                string candidate = Path.Combine(roslynDir, assemblyName.Name + ".dll");
+                if (File.Exists(candidate))
+                {
+                    return context.LoadFromAssemblyPath(candidate);
+                }
+                return null;
+            };
 
             if (File.Exists(csharpDll))
             {
@@ -133,10 +169,11 @@ namespace RulesCsharp.Tools
             }
         }
 
-        private static void RunWorkerLoop()
+        private static int RunWorkerLoop()
         {
             var stdin = Console.OpenStandardInput();
             var stdout = Console.OpenStandardOutput();
+            int count = 0;
 
             while (true)
             {
@@ -146,14 +183,13 @@ namespace RulesCsharp.Tools
                     break; // EOF
                 }
 
+                count++;
                 var request = ParseWorkRequest(frame);
-
-                Task.Run(() =>
-                {
-                    var (exitCode, output) = ExecuteCompilation(request.Arguments.ToArray());
-                    SendWorkResponse(stdout, request.RequestId, exitCode, output);
-                });
+                var (exitCode, output) = ExecuteCompilation(request.Arguments.ToArray());
+                SendWorkResponse(stdout, request.RequestId, exitCode, output);
             }
+
+            return count;
         }
 
         private static (int exitCode, string output) ExecuteCompilation(string[] compileArgs)

@@ -1,6 +1,6 @@
 """Module extensions for rules_csharp."""
 
-load("//csharp:toolchains.bzl", "PLATFORMS", "csharp_toolchains_hub", "runtime_pack", "sdk_exec")
+load("//csharp:toolchains.bzl", "DOTNET_ARTIFACTS", "PLATFORMS", "csharp_toolchains_hub", "runtime_pack", "sdk_exec")
 load("//csharp/private:nuget_repo.bzl", "nuget_hub_repo", "nuget_package_repo")
 
 toolchain_tag = tag_class(
@@ -71,12 +71,17 @@ def _csharp_impl(module_ctx):
                     ))
             candidate_urls.append("https://dotnetcli.azureedge.net/dotnet/Sdk/{}/{}".format(version, archive))
 
+            integrity = ""
+            if version in DOTNET_ARTIFACTS and rid in DOTNET_ARTIFACTS[version]:
+                integrity = DOTNET_ARTIFACTS[version][rid]["sdk"]
+
             sdk_name = "dotnet_sdk_{}_{}".format(v_slug, p_name)
             sdk_exec(
                 name = sdk_name,
                 archive_ext = ext,
                 auth_patterns = auth_patterns,
                 dotnet_version = version,
+                integrity = integrity,
                 netrc = netrc,
                 platform = p_name,
                 rid = rid,
@@ -89,6 +94,7 @@ def _csharp_impl(module_ctx):
                 archive_ext = ext,
                 auth_patterns = auth_patterns,
                 dotnet_version = version,
+                integrity = integrity,
                 netrc = netrc,
                 platform = p_name,
                 rid = rid,

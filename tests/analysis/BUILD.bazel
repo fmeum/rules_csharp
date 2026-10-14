@@ -4,6 +4,8 @@ load(
     "abi_refout_action_test",
     "cross_linux_action_test",
     "cross_windows_action_test",
+    "csc_worker_action_test",
+    "web_sdk_action_test",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -17,6 +19,12 @@ csharp_library(
     name = "lib_b",
     srcs = ["LibB.cs"],
     deps = [":lib_a"],
+)
+
+csharp_library(
+    name = "web_lib",
+    srcs = ["LibA.cs"],
+    sdk = "Microsoft.NET.Sdk.Web",
 )
 
 csharp_binary(
@@ -37,6 +45,16 @@ cross_windows_action_test(
 cross_linux_action_test(
     name = "cross_linux_action_test",
     target_under_test = ":cross_app",
+)
+
+csc_worker_action_test(
+    name = "csc_worker_action_test",
+    target_under_test = ":lib_a",
+)
+
+web_sdk_action_test(
+    name = "web_sdk_action_test",
+    target_under_test = ":web_lib",
 )
 
 load("//tests/integration:test_helpers.bzl", "shell_test")

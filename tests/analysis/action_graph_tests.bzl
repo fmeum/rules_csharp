@@ -117,3 +117,47 @@ cross_linux_action_test = analysistest.make(
     },
 )
 
+def _csc_worker_action_test_impl(ctx):
+    env = analysistest.begin(ctx)
+
+    actions = analysistest.target_actions(env)
+    compile_actions = [a for a in actions if a.mnemonic == "CSharpCompile"]
+    asserts.equals(env, 1, len(compile_actions))
+    compile_action = compile_actions[0]
+
+    argv0 = compile_action.argv[0]
+    asserts.true(
+        env,
+        argv0.endswith("CscWorker") or argv0.endswith("CscWorker.exe"),
+        "Expected action.argv[0] to end with CscWorker or CscWorker.exe, got: %s" % argv0,
+    )
+    asserts.true(
+        env,
+        "--persistent_worker" in compile_action.argv,
+        "Expected --persistent_worker in compile action arguments",
+    )
+
+    return analysistest.end(env)
+
+csc_worker_action_test = analysistest.make(_csc_worker_action_test_impl)
+
+def _web_sdk_action_test_impl(ctx):
+    env = analysistest.begin(ctx)
+
+    actions = analysistest.target_actions(env)
+    compile_actions = [a for a in actions if a.mnemonic == "CSharpCompile"]
+    asserts.equals(env, 1, len(compile_actions))
+    compile_action = compile_actions[0]
+
+    input_paths = [f.path for f in compile_action.inputs.to_list()]
+    asserts.true(
+        env,
+        any(["Microsoft.AspNetCore.App.Ref" in p for p in input_paths]),
+        "Expected Microsoft.AspNetCore.App.Ref reference assemblies in compile inputs, got: %s" % input_paths,
+    )
+
+    return analysistest.end(env)
+
+web_sdk_action_test = analysistest.make(_web_sdk_action_test_impl)
+
+

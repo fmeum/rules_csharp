@@ -7,14 +7,24 @@ def _csharp_toolchain_impl(ctx):
     if ctx.attr.ref_pack:
         ref_files = ctx.files.ref_pack
 
+    aspnet_files = []
+    if ctx.attr.aspnetcore_ref_pack:
+        aspnet_files = ctx.files.aspnetcore_ref_pack
+
+    worker_files = []
+    if hasattr(ctx.attr, "csc_worker_files") and ctx.attr.csc_worker_files:
+        worker_files = ctx.files.csc_worker_files
+
     runtime_files = []
     if ctx.attr.runtime_pack:
         runtime_files = ctx.files.runtime_pack
 
     toolchain_info = CSharpToolchainInfo(
+        aspnetcore_ref_pack = depset(aspnet_files),
         dotnet_muxer = ctx.file.dotnet_muxer,
         csc_dll = ctx.file.csc_dll,
         csc_worker = ctx.executable.csc_worker if ctx.attr.csc_worker else None,
+        csc_worker_files = depset(worker_files),
         ref_pack = depset(ref_files),
         host_pack = ctx.file.host_pack,
         runtime_pack = depset(runtime_files),
@@ -36,6 +46,11 @@ csharp_toolchain = rule(
     doc = "Defines a C# toolchain linking host SDK tools to target framework packs.",
     implementation = _csharp_toolchain_impl,
     attrs = {
+        "aspnetcore_ref_pack": attr.label_list(
+            allow_files = True,
+            cfg = "target",
+            doc = "Reference assembly files for Microsoft.AspNetCore.App.",
+        ),
         "csc_dll": attr.label(
             allow_single_file = True,
             cfg = "exec",
@@ -47,6 +62,11 @@ csharp_toolchain = rule(
             cfg = "exec",
             doc = "Host executable file for persistent multiplex worker.",
             executable = True,
+        ),
+        "csc_worker_files": attr.label_list(
+            allow_files = True,
+            cfg = "exec",
+            doc = "Files required to run csc_worker.",
         ),
         "dotnet_muxer": attr.label(
             allow_single_file = True,

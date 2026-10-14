@@ -26,14 +26,29 @@ def _binary_common_impl(ctx, is_test = False):
 
     # 1. Synthesize <name>.runtimeconfig.json
     runtimeconfig_json = ctx.actions.declare_file(ctx.label.name + ".runtimeconfig.json")
+    sdk_flavor = getattr(ctx.attr, "sdk", "Microsoft.NET.Sdk")
+    if sdk_flavor == "Microsoft.NET.Sdk.Web":
+        framework_section = """    "frameworks": [
+      {
+        "name": "Microsoft.NETCore.App",
+        "version": "%s"
+      },
+      {
+        "name": "Microsoft.AspNetCore.App",
+        "version": "%s"
+      }
+    ],""" % (framework_version, framework_version)
+    else:
+        framework_section = """    "framework": {
+      "name": "Microsoft.NETCore.App",
+      "version": "%s"
+    },""" % framework_version
+
     runtimeconfig_content = """{{
   "runtimeOptions": {{
     "tfm": "{tfm}",
     "rollForward": "LatestMajor",
-    "framework": {{
-      "name": "Microsoft.NETCore.App",
-      "version": "{framework_version}"
-    }},
+{framework_section}
     "additionalProbingPaths": [
       {probing_paths_str}
     ],
@@ -45,7 +60,7 @@ def _binary_common_impl(ctx, is_test = False):
 }}
 """.format(
         tfm = tfm,
-        framework_version = framework_version,
+        framework_section = framework_section,
         probing_paths_str = probing_paths_str,
     )
     ctx.actions.write(
@@ -268,6 +283,15 @@ _BINARY_ATTRS = {
         allow_files = True,
         default = [],
         doc = "Embedded resource files.",
+    ),
+    "sdk": attr.string(
+        default = "Microsoft.NET.Sdk",
+        doc = "Target .NET SDK project flavor.",
+        values = [
+            "Microsoft.NET.Sdk",
+            "Microsoft.NET.Sdk.Web",
+            "Microsoft.NET.Sdk.Worker",
+        ],
     ),
     "srcs": attr.label_list(
         allow_files = [".cs"],

@@ -59,6 +59,13 @@ def _compile_impl(ctx, is_analyzer = False):
     for ref in toolchain.ref_pack.to_list():
         args.add("-reference:" + ref.path.replace("\\", "/"))
 
+    sdk_flavor = getattr(ctx.attr, "sdk", "Microsoft.NET.Sdk")
+    aspnet_depsets = []
+    if sdk_flavor == "Microsoft.NET.Sdk.Web" and hasattr(toolchain, "aspnetcore_ref_pack") and toolchain.aspnetcore_ref_pack:
+        aspnet_depsets.append(toolchain.aspnetcore_ref_pack)
+        for ref in toolchain.aspnetcore_ref_pack.to_list():
+            args.add("-reference:" + ref.path.replace("\\", "/"))
+
     # Dependency compile references
     all_compile_refs = depset(transitive = transitive_compile_depsets, order = "preorder").to_list()
     for ref in all_compile_refs:
@@ -78,26 +85,34 @@ def _compile_impl(ctx, is_analyzer = False):
 
     # Inputs strictly limited to srcs, resources, toolchain ref_pack, analyzers, and transitive_compile_refs
     direct_inputs = [toolchain.csc_dll] + ctx.files.srcs + ctx.files.resources
+    worker_depsets = []
     if toolchain.csc_worker:
         direct_inputs.append(toolchain.csc_worker)
+        if hasattr(toolchain, "csc_worker_files") and toolchain.csc_worker_files:
+            worker_depsets.append(toolchain.csc_worker_files)
 
     inputs_depset = depset(
         direct = direct_inputs,
-        transitive = [toolchain.ref_pack, analyzers_depset] + transitive_compile_depsets,
+        transitive = [toolchain.ref_pack, analyzers_depset] + transitive_compile_depsets + aspnet_depsets + worker_depsets,
     )
 
-    execution_requirements = {}
     if toolchain.csc_worker:
+        compiler_executable = toolchain.csc_worker
+        compiler_args = ["--persistent_worker", args]
         execution_requirements = {
-            "supports-multiplex-workers": "1",
             "requires-worker-protocol": "proto",
+            "supports-multiplex-workers": "1",
         }
+    else:
+        compiler_executable = toolchain.dotnet_muxer
+        compiler_args = [toolchain.csc_dll.path.replace("\\", "/"), args]
+        execution_requirements = {}
 
     ctx.actions.run(
         outputs = [out_dll, refout_dll, pdb],
         inputs = inputs_depset,
-        executable = toolchain.dotnet_muxer,
-        arguments = [toolchain.csc_dll.path.replace("\\", "/"), args],
+        executable = compiler_executable,
+        arguments = compiler_args,
         mnemonic = "CSharpCompile",
         progress_message = "Compiling C# %{label}",
         use_default_shell_env = False,
@@ -302,6 +317,15 @@ _COMMON_ATTRS = {
         allow_files = [".dll"],
         default = [],
         doc = "Precompiled runtime implementation assembly DLL files.",
+    ),
+    "sdk": attr.string(
+        default = "Microsoft.NET.Sdk",
+        doc = "Target .NET SDK project flavor.",
+        values = [
+            "Microsoft.NET.Sdk",
+            "Microsoft.NET.Sdk.Web",
+            "Microsoft.NET.Sdk.Worker",
+        ],
     ),
     "srcs": attr.label_list(
         allow_files = [".cs"],
