@@ -31,6 +31,7 @@ def _csharp_toolchain_impl(ctx):
         target_framework = ctx.attr.target_framework,
         target_rid = ctx.attr.target_rid,
         host_rid = ctx.attr.host_rid,
+        vstest_dll = ctx.file.vstest_dll if hasattr(ctx.file, "vstest_dll") else None,
     )
 
     return [
@@ -100,6 +101,11 @@ csharp_toolchain = rule(
         "target_rid": attr.string(
             doc = "Target runtime identifier string.",
             mandatory = True,
+        ),
+        "vstest_dll": attr.label(
+            allow_single_file = True,
+            cfg = "exec",
+            doc = "Host file for vstest.console.dll test runner assembly.",
         ),
     },
 )

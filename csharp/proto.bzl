@@ -1,0 +1,133 @@
+"""Protobuf and gRPC compilation rules for rules_csharp."""
+
+load("@protobuf//bazel/common:proto_info.bzl", "ProtoInfo")
+load("//csharp/private:compile.bzl", "COMMON_ATTRS", "compile_impl")
+
+def _proto_to_csharp_basename(proto_file):
+    base = proto_file.basename
+    if base.endswith(".proto"):
+        base = base[:-6]
+    parts = base.split("_")
+    return "".join([p[0].upper() + p[1:] if len(p) > 0 else "" for p in parts])
+
+def _proto_common_impl(ctx, is_grpc = False):
+    proto_target = getattr(ctx.attr, "proto", None)
+    if not proto_target:
+        for d in ctx.attr.deps:
+            if ProtoInfo in d:
+                proto_target = d
+                break
+    if not proto_target or ProtoInfo not in proto_target:
+        fail("Target must specify a 'proto' attribute or a dependency in 'deps' providing ProtoInfo")
+
+    proto_info = proto_target[ProtoInfo]
+
+    generated_cs = []
+    for p in proto_info.direct_sources:
+        base_name = _proto_to_csharp_basename(p)
+        cs_file = ctx.actions.declare_file(base_name + ".cs")
+        generated_cs.append(cs_file)
+        if is_grpc:
+            grpc_file = ctx.actions.declare_file(base_name + "Grpc.cs")
+            generated_cs.append(grpc_file)
+
+    if not generated_cs:
+        fail("No proto sources found in ProtoInfo provider")
+
+    out_dir = generated_cs[0].dirname
+    args = ctx.actions.args()
+
+    proto_paths = ["."]
+    for p in proto_info.direct_sources:
+        if p.dirname not in proto_paths:
+            proto_paths.append(p.dirname)
+    if hasattr(proto_info, "transitive_proto_path"):
+        for path in proto_info.transitive_proto_path.to_list():
+            if path not in proto_paths:
+                proto_paths.append(path)
+
+    for path in proto_paths:
+        args.add("-I" + path)
+
+    args.add("--csharp_out=" + out_dir)
+
+    tools = []
+    if is_grpc:
+        plugin = None
+        if hasattr(ctx.executable, "plugin") and ctx.executable.plugin:
+            plugin = ctx.executable.plugin
+        elif hasattr(ctx.executable, "_grpc_csharp_plugin") and ctx.executable._grpc_csharp_plugin:
+            plugin = ctx.executable._grpc_csharp_plugin
+
+        if plugin:
+            tools.append(plugin)
+            args.add("--plugin=protoc-gen-grpc=" + plugin.path)
+            args.add("--grpc_out=" + out_dir)
+        else:
+            args.add("--grpc_out=" + out_dir)
+
+    for p in proto_info.direct_sources:
+        args.add(p.path)
+
+    ctx.actions.run(
+        mnemonic = "ProtocGenCSharp" if not is_grpc else "ProtocGenCSharpGrpc",
+        executable = ctx.executable._protoc,
+        arguments = [args],
+        inputs = proto_info.transitive_sources,
+        outputs = generated_cs,
+        tools = tools,
+        progress_message = "Generating C# proto bindings for %{label}",
+    )
+
+    return compile_impl(ctx, extra_srcs = generated_cs)
+
+def _csharp_proto_library_impl(ctx):
+    return _proto_common_impl(ctx, is_grpc = False)
+
+def _csharp_grpc_library_impl(ctx):
+    return _proto_common_impl(ctx, is_grpc = True)
+
+_PROTO_ATTRS = dict(COMMON_ATTRS)
+_PROTO_ATTRS.update({
+    "proto": attr.label(
+        default = None,
+        providers = [ProtoInfo],
+        doc = "Target providing ProtoInfo with proto sources.",
+    ),
+    "_protoc": attr.label(
+        default = "@protobuf//:protoc",
+        executable = True,
+        cfg = "exec",
+    ),
+})
+
+_GRPC_ATTRS = dict(_PROTO_ATTRS)
+_GRPC_ATTRS.update({
+    "plugin": attr.label(
+        default = None,
+        executable = True,
+        cfg = "exec",
+        allow_single_file = True,
+        doc = "The grpc_csharp_plugin executable.",
+    ),
+    "_grpc_csharp_plugin": attr.label(
+        default = None,
+        executable = True,
+        cfg = "exec",
+        allow_single_file = True,
+    ),
+})
+
+csharp_proto_library = rule(
+    doc = "Compiles Protocol Buffer definitions into a C# assembly library.",
+    implementation = _csharp_proto_library_impl,
+    attrs = _PROTO_ATTRS,
+    toolchains = ["@rules_csharp//csharp:toolchain_type"],
+)
+
+csharp_grpc_library = rule(
+    doc = "Compiles Protocol Buffer and gRPC service definitions into a C# assembly library.",
+    implementation = _csharp_grpc_library_impl,
+    attrs = _GRPC_ATTRS,
+    toolchains = ["@rules_csharp//csharp:toolchain_type"],
+)

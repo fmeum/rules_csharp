@@ -1,10 +1,13 @@
-load("//csharp:defs.bzl", "csharp_binary", "csharp_library")
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("//csharp:defs.bzl", "csharp_binary", "csharp_library", "csharp_proto_library")
 load(
     ":action_graph_tests.bzl",
     "abi_refout_action_test",
     "cross_linux_action_test",
     "cross_windows_action_test",
     "csc_worker_action_test",
+    "msbuild_parity_action_test",
+    "proto_action_test",
     "web_sdk_action_test",
 )
 
@@ -32,6 +35,17 @@ csharp_binary(
     srcs = ["CrossApp.cs"],
 )
 
+proto_library(
+    name = "greeter_proto",
+    srcs = ["greeter.proto"],
+)
+
+csharp_proto_library(
+    name = "greeter_cs_proto",
+    proto = ":greeter_proto",
+    tags = ["manual"],
+)
+
 abi_refout_action_test(
     name = "abi_refout_action_test",
     target_under_test = ":lib_b",
@@ -57,6 +71,16 @@ web_sdk_action_test(
     target_under_test = ":web_lib",
 )
 
+msbuild_parity_action_test(
+    name = "msbuild_parity_action_test",
+    target_under_test = ":lib_a",
+)
+
+proto_action_test(
+    name = "proto_action_test",
+    target_under_test = ":greeter_cs_proto",
+)
+
 load("//tests/integration:test_helpers.bzl", "shell_test")
 
 # Section 11: Clinical Documentation Standards and Anti-Slop Enforcement
@@ -69,4 +93,3 @@ shell_test(
         "//csharp:docs",
     ],
 )
-

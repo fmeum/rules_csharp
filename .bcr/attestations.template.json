@@ -1,0 +1,17 @@
+{
+  "mediaType": "application/vnd.build.bazel.registry.attestation+json;version=1.0.0",
+  "attestations": {
+    "source.json": {
+      "url": "https://github.com/rulescsharp/rules_csharp/releases/download/{TAG}/source.json.intoto.jsonl",
+      "integrity": "{SOURCE_JSON_INTEGRITY}"
+    },
+    "MODULE.bazel": {
+      "url": "https://github.com/rulescsharp/rules_csharp/releases/download/{TAG}/MODULE.bazel.intoto.jsonl",
+      "integrity": "{MODULE_BAZEL_INTEGRITY}"
+    },
+    "{ARCHIVE_NAME}": {
+      "url": "https://github.com/rulescsharp/rules_csharp/releases/download/{TAG}/{ARCHIVE_NAME}.intoto.jsonl",
+      "integrity": "{ARCHIVE_INTEGRITY}"
+    }
+  }
+}

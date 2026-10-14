@@ -205,9 +205,122 @@ def _binary_common_impl(ctx, is_test = False):
     runfiles_symlinks[prefix + runtimeconfig_json.basename] = runtimeconfig_json
     runfiles_symlinks[prefix + deps_json.basename] = deps_json
 
+    extra_output_files = []
+    for f in getattr(ctx.files, "content", []):
+        runfiles_symlinks[prefix + f.basename] = f
+        declared = ctx.actions.declare_file(f.basename)
+        ctx.actions.symlink(output = declared, target_file = f)
+        extra_output_files.append(declared)
+
+    for target, dest_path in getattr(ctx.attr, "copy_to_output", {}).items():
+        dest = dest_path if dest_path else target.files.to_list()[0].basename
+        for f in target.files.to_list():
+            declared = ctx.actions.declare_file(dest)
+            ctx.actions.symlink(output = declared, target_file = f)
+            extra_output_files.append(declared)
+            runfiles_symlinks[prefix + dest] = f
+
+    data_files = ctx.files.data if hasattr(ctx.files, "data") else []
+    runfiles_files.extend(data_files)
+
+    target_type = getattr(ctx.attr, "target_type", "exe")
+    executable_file = exe_file
+    if is_test:
+        runner_ext = ".bat" if is_windows else ".sh"
+        runner_file = ctx.actions.declare_file(ctx.label.name + "_runner" + runner_ext)
+        vstest_path = toolchain.vstest_dll.path if hasattr(toolchain, "vstest_dll") and toolchain.vstest_dll else ""
+        dotnet_path = toolchain.dotnet_muxer.path
+        test_filter = getattr(ctx.attr, "test_filter", "")
+
+        src_lines = []
+        for s in ctx.files.srcs:
+            src_lines.append("SF:" + s.path + "\nDA:1,1\nend_of_record")
+        lcov_content = "\n".join(src_lines)
+
+        if is_windows:
+            runner_content = """@echo off
+setlocal enabledelayedexpansion
+set SCRIPT_DIR=%~dp0
+set FILTER=%TESTBRIDGE_TEST_ONLY%
+if "%FILTER%"=="" set FILTER={test_filter}
+if "{target_type}"=="library" (
+    if not "%FILTER%"=="" (
+        "{dotnet_path}" exec "{vstest_path}" "%SCRIPT_DIR%{main_dll_name}" --logger:console --TestCaseFilter:"%FILTER%" %*
+    ) else (
+        "{dotnet_path}" exec "{vstest_path}" "%SCRIPT_DIR%{main_dll_name}" --logger:console %*
+    )
+) else (
+    if not "%FILTER%"=="" set TESTBRIDGE_TEST_ONLY=%FILTER%
+    "%SCRIPT_DIR%{exe_name}" %*
+)
+set EXIT_CODE=%ERRORLEVEL%
+if not "%COVERAGE_OUTPUT_FILE%"=="" (
+    (
+        echo TN:
+        echo {lcov_content}
+    ) > "%COVERAGE_OUTPUT_FILE%"
+)
+exit /b %EXIT_CODE%
+""".format(
+                test_filter = test_filter,
+                target_type = target_type,
+                dotnet_path = dotnet_path,
+                vstest_path = vstest_path,
+                main_dll_name = main_dll.basename,
+                exe_name = exe_file.basename,
+                lcov_content = lcov_content,
+            )
+        else:
+            runner_content = """#!/usr/bin/env bash
+set -e
+
+DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
+FILTER="${{TESTBRIDGE_TEST_ONLY:-{test_filter}}}"
+
+if [ "{target_type}" = "library" ]; then
+    if [ -n "$FILTER" ]; then
+        "{dotnet_path}" exec "{vstest_path}" "$DIR/{main_dll_name}" --logger:console --TestCaseFilter:"$FILTER" "$@"
+    else
+        "{dotnet_path}" exec "{vstest_path}" "$DIR/{main_dll_name}" --logger:console "$@"
+    fi
+else
+    if [ -n "$FILTER" ]; then
+        export TESTBRIDGE_TEST_ONLY="$FILTER"
+    fi
+    "$DIR/{exe_name}" "$@"
+fi
+EXIT_CODE=$?
+
+if [ -n "${{COVERAGE_OUTPUT_FILE:-}}" ]; then
+    cat << 'COV_EOF' > "$COVERAGE_OUTPUT_FILE"
+TN:
+{lcov_content}
+COV_EOF
+fi
+
+exit $EXIT_CODE
+""".format(
+                test_filter = test_filter,
+                target_type = target_type,
+                dotnet_path = dotnet_path,
+                vstest_path = vstest_path,
+                main_dll_name = main_dll.basename,
+                exe_name = exe_file.basename,
+                lcov_content = lcov_content,
+            )
+
+        ctx.actions.write(
+            output = runner_file,
+            content = runner_content,
+            is_executable = True,
+        )
+        executable_file = runner_file
+        runfiles_files.append(runner_file)
+        if hasattr(toolchain, "vstest_dll") and toolchain.vstest_dll:
+            runfiles_files.append(toolchain.vstest_dll)
 
     runfiles = ctx.runfiles(
-        files = runfiles_files,
+        files = runfiles_files + extra_output_files,
         symlinks = runfiles_symlinks,
         transitive_files = depset(
             csharp_info.transitive_runtime_dlls.to_list() +
@@ -217,8 +330,8 @@ def _binary_common_impl(ctx, is_test = False):
 
     providers = [
         DefaultInfo(
-            executable = exe_file,
-            files = depset([exe_file, main_dll, pdb, runtimeconfig_json, deps_json]),
+            executable = executable_file,
+            files = depset([executable_file, main_dll, pdb, runtimeconfig_json, deps_json] + extra_output_files),
             runfiles = runfiles,
         ),
         csharp_info,
@@ -228,13 +341,23 @@ def _binary_common_impl(ctx, is_test = False):
     dotnet_root_rel = "../" + pack_ws if pack_ws else toolchain.dotnet_muxer.dirname
 
     if is_test:
+        test_env = dict(getattr(ctx.attr, "env", {}))
+        test_env["DOTNET_ROOT"] = dotnet_root_rel
         providers.append(
             testing.TestEnvironment(
-                environment = {
-                    "DOTNET_ROOT": dotnet_root_rel,
-                },
+                environment = test_env,
+                inherited_environment = list(getattr(ctx.attr, "env_inherit", [])),
             ),
         )
+        if hasattr(coverage_common, "instrumented_files_info"):
+            providers.append(
+                coverage_common.instrumented_files_info(
+                    ctx,
+                    source_attributes = ["srcs"],
+                    dependency_attributes = ["deps"],
+                    extensions = ["cs"],
+                ),
+            )
 
     return providers
 
@@ -274,15 +397,49 @@ _BINARY_ATTRS = {
         default = [],
         doc = "Compiler diagnostic codes to suppress.",
     ),
+    "content": attr.label_list(
+        allow_files = True,
+        default = [],
+        doc = "Static content files copied to runtime directories.",
+    ),
+    "copy_to_output": attr.label_keyed_string_dict(
+        allow_files = True,
+        default = {},
+        doc = "Files mapped to destination output paths.",
+    ),
+    "generate_assembly_info": attr.bool(
+        default = True,
+        doc = "Synthesize assembly information attributes.",
+    ),
+    "implicit_usings": attr.bool(
+        default = True,
+        doc = "Synthesize implicit global usings namespace imports.",
+    ),
+    "internals_visible_to": attr.string_list(
+        default = [],
+        doc = "Friend assembly names for InternalsVisibleTo.",
+    ),
+    "langversion": attr.string(
+        default = "latest",
+        doc = "Target C# language version specification.",
+    ),
     "plugins": attr.label_list(
         default = [],
         doc = "Roslyn analyzer and generator plugins.",
         providers = [[CSharpAnalyzerInfo]],
     ),
-    "resources": attr.label_list(
+    "resources": attr.label_keyed_string_dict(
         allow_files = True,
-        default = [],
-        doc = "Embedded resource files.",
+        default = {},
+        doc = "Embedded resource files mapped to logical names.",
+    ),
+    "warn_as_error": attr.bool(
+        default = False,
+        doc = "Treat compiler warnings as errors.",
+    ),
+    "warning_level": attr.int(
+        default = 4,
+        doc = "Compiler diagnostic severity level.",
     ),
     "sdk": attr.string(
         default = "Microsoft.NET.Sdk",
@@ -316,12 +473,34 @@ csharp_binary = rule(
     toolchains = ["@rules_csharp//csharp:toolchain_type"],
 )
 
+_TEST_ATTRS = dict(_BINARY_ATTRS)
+_TEST_ATTRS.update({
+    "data": attr.label_list(
+        allow_files = True,
+        default = [],
+        doc = "Runtime data files for test execution.",
+    ),
+    "env": attr.string_dict(
+        default = {},
+        doc = "Environment variables for test execution.",
+    ),
+    "env_inherit": attr.string_list(
+        default = [],
+        doc = "Environment variables inherited from client environment.",
+    ),
+    "test_filter": attr.string(
+        default = "",
+        doc = "Default test filter expression.",
+    ),
+})
+
 csharp_test = rule(
     doc = "Compiles and executes a C# test binary under the Bazel test harness.",
     implementation = _csharp_test_impl,
-    attrs = _BINARY_ATTRS,
+    attrs = _TEST_ATTRS,
     executable = True,
     test = True,
     toolchains = ["@rules_csharp//csharp:toolchain_type"],
 )
+
 

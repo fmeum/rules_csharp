@@ -34,5 +34,6 @@ CSharpToolchainInfo = provider(
         "runtime_pack": "Depset of runtime assembly Files for target platform.",
         "target_framework": "Target framework moniker string.",
         "target_rid": "Target runtime identifier string.",
+        "vstest_dll": "Host File for vstest.console.dll.",
     },
 )

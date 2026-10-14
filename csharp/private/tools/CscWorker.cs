@@ -3,9 +3,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Resources;
 using System.Runtime.Loader;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace RulesCsharp.Tools
 {
@@ -199,6 +201,8 @@ namespace RulesCsharp.Tools
                 return (1, "Compiler entry point not initialized.");
             }
 
+            compileArgs = PreprocessArgs(compileArgs);
+
             lock (_compileLock)
             {
                 var prevOut = Console.Out;
@@ -228,6 +232,64 @@ namespace RulesCsharp.Tools
                     Console.SetError(prevErr);
                 }
             }
+        }
+
+        private static string[] PreprocessArgs(string[] compileArgs)
+        {
+            var processed = new List<string>(compileArgs.Length);
+            foreach (var arg in compileArgs)
+            {
+                if (arg.StartsWith("-resource:") || arg.StartsWith("/resource:"))
+                {
+                    string prefix = arg.Substring(0, 10);
+                    string spec = arg.Substring(10);
+                    string[] parts = spec.Split(',', 2);
+                    string resPath = parts[0];
+                    string? logicalName = parts.Length > 1 ? parts[1] : null;
+
+                    if (resPath.EndsWith(".resx", StringComparison.OrdinalIgnoreCase) && File.Exists(resPath))
+                    {
+                        string compiledPath = CompileResx(resPath);
+                        if (!string.IsNullOrEmpty(logicalName))
+                        {
+                            processed.Add($"{prefix}{compiledPath},{logicalName}");
+                        }
+                        else
+                        {
+                            processed.Add($"{prefix}{compiledPath}");
+                        }
+                        continue;
+                    }
+                }
+                processed.Add(arg);
+            }
+            return processed.ToArray();
+        }
+
+        private static string CompileResx(string resxPath)
+        {
+            string outPath = Path.ChangeExtension(resxPath, ".resources");
+            try
+            {
+                var doc = XDocument.Load(resxPath);
+                using var stream = File.Create(outPath);
+                using var rw = new ResourceWriter(stream);
+                foreach (var el in doc.Descendants("data"))
+                {
+                    string? name = (string?)el.Attribute("name");
+                    string? value = (string?)el.Element("value");
+                    if (name != null && value != null)
+                    {
+                        rw.AddResource(name, value);
+                    }
+                }
+                rw.Generate();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Warning: Failed to compile resx '{resxPath}': {ex.Message}");
+            }
+            return outPath;
         }
 
         private class WorkRequest

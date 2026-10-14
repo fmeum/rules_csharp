@@ -371,6 +371,11 @@ filegroup(
 )
 
 filegroup(
+    name = "vstest_dll",
+    srcs = glob(["sdk/*/vstest.console.dll"]),
+)
+
+filegroup(
     name = "sdk_files",
     srcs = glob(["**/*"]),
 )
@@ -556,6 +561,7 @@ def _csharp_toolchains_hub_impl(repository_ctx):
     target_framework = "{tfm}",
     target_rid = "{target_rid}",
     host_rid = "{host_rid}",
+    vstest_dll = "@dotnet_sdk_{v_slug}_{exec_p}//:vstest_dll",
 )
 
 toolchain(

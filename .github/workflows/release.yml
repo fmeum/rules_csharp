@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -30,6 +32,61 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "archive=${ARCHIVE}" >> $GITHUB_OUTPUT
           echo "integrity=${INTEGRITY}" >> $GITHUB_OUTPUT
+
+          cat << EOF > source.json
+          {
+            "integrity": "${INTEGRITY}",
+            "patch_strip": 0,
+            "strip_prefix": "rules_csharp-${VERSION}",
+            "url": "https://github.com/rulescsharp/rules_csharp/releases/download/${TAG}/${ARCHIVE}"
+          }
+          EOF
+
+      - name: Attest archive build provenance
+        id: attest_archive
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ${{ steps.package.outputs.archive }}
+
+      - name: Attest MODULE.bazel provenance
+        id: attest_module
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: MODULE.bazel
+
+      - name: Attest source.json provenance
+        id: attest_source
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: source.json
+
+      - name: Generate attestations.json
+        id: attestations
+        run: |
+          ARCHIVE="${{ steps.package.outputs.archive }}"
+          ARCHIVE_INTEGRITY="${{ steps.package.outputs.integrity }}"
+          MODULE_INTEGRITY="sha256-$(openssl dgst -sha256 -binary MODULE.bazel | base64 | tr -d '\n')"
+          SOURCE_INTEGRITY="sha256-$(openssl dgst -sha256 -binary source.json | base64 | tr -d '\n')"
+
+          cat << EOF > attestations.json
+          {
+            "mediaType": "application/vnd.build.bazel.registry.attestation+json;version=1.0.0",
+            "attestations": {
+              "source.json": {
+                "url": "${{ steps.attest_source.outputs.bundle-url }}",
+                "integrity": "${SOURCE_INTEGRITY}"
+              },
+              "MODULE.bazel": {
+                "url": "${{ steps.attest_module.outputs.bundle-url }}",
+                "integrity": "${MODULE_INTEGRITY}"
+              },
+              "${ARCHIVE}": {
+                "url": "${{ steps.attest_archive.outputs.bundle-url }}",
+                "integrity": "${ARCHIVE_INTEGRITY}"
+              }
+            }
+          }
+          EOF
 
       - name: Generate release notes
         run: |
@@ -56,5 +113,7 @@ jobs:
           gh release create "${{ steps.package.outputs.tag }}" \
             "${{ steps.package.outputs.archive }}" \
             MODULE.bazel \
+            source.json \
+            attestations.json \
             --title "${{ steps.package.outputs.tag }}" \
             --notes-file release_notes.md
