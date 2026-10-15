@@ -14,133 +14,75 @@ jobs:
   release:
     name: Publish Release
     runs-on: ubuntu-latest
-    outputs:
-      has_bcr_token: ${{ steps.check_token.outputs.has_bcr_token }}
     steps:
-      - name: Check BCR publish token
-        id: check_token
-        env:
-          BCR_TOKEN: ${{ secrets.BCR_PUBLISH_TOKEN }}
-        run: |
-          if [ -n "${BCR_TOKEN}" ]; then
-            echo "has_bcr_token=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_bcr_token=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Package release archive and compute SRI
+      - name: Package release archive and prepare source.json
         id: package
         run: |
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#v}"
           ARCHIVE="rules_csharp-${TAG}.tar.gz"
+
+          # 1. Create release archive
           git archive --format=tar.gz --prefix="rules_csharp-${VERSION}/" "${TAG}" > "${ARCHIVE}"
+
+          # 2. Stamp version into MODULE.bazel
+          sed -i.bak -E "s/version = \"[^\"]+\"/version = \"${VERSION}\"/" MODULE.bazel
+          rm -f MODULE.bazel.bak
+
+          # 3. Compute archive SRI hash
           INTEGRITY="sha256-$(openssl dgst -sha256 -binary "${ARCHIVE}" | base64 | tr -d '\n')"
+
+          # 4. Populate source.json from template
+          sed -e "s|{OWNER}|${GITHUB_REPOSITORY_OWNER}|g" \
+              -e "s|{REPO}|rules_csharp|g" \
+              -e "s|{TAG}|${TAG}|g" \
+              -e "s|{VERSION}|${VERSION}|g" \
+              -e "s|\"\\*\\*leave this alone\\*\\*\"|\"${INTEGRITY}\"|g" \
+              .bcr/source.template.json > source.json
+
+          echo "archive=${ARCHIVE}" >> $GITHUB_OUTPUT
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "archive=${ARCHIVE}" >> $GITHUB_OUTPUT
-          echo "integrity=${INTEGRITY}" >> $GITHUB_OUTPUT
 
-          cat << EOF > source.json
-          {
-            "integrity": "${INTEGRITY}",
-            "patch_strip": 0,
-            "strip_prefix": "rules_csharp-${VERSION}",
-            "url": "https://github.com/rulescsharp/rules_csharp/releases/download/${TAG}/${ARCHIVE}"
-          }
-          EOF
-
-      - name: Attest archive build provenance
-        id: attest_archive
+      - name: Attest archive provenance
         uses: actions/attest-build-provenance@v1
         with:
-          subject-path: ${{ steps.package.outputs.archive }}
+          subject-path: rules_csharp-${{ github.ref_name }}.tar.gz
 
       - name: Attest MODULE.bazel provenance
-        id: attest_module
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: MODULE.bazel
 
       - name: Attest source.json provenance
-        id: attest_source
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: source.json
-
-      - name: Generate attestations.json
-        id: attestations
-        run: |
-          ARCHIVE="${{ steps.package.outputs.archive }}"
-          ARCHIVE_INTEGRITY="${{ steps.package.outputs.integrity }}"
-          MODULE_INTEGRITY="sha256-$(openssl dgst -sha256 -binary MODULE.bazel | base64 | tr -d '\n')"
-          SOURCE_INTEGRITY="sha256-$(openssl dgst -sha256 -binary source.json | base64 | tr -d '\n')"
-
-          cat << EOF > attestations.json
-          {
-            "mediaType": "application/vnd.build.bazel.registry.attestation+json;version=1.0.0",
-            "attestations": {
-              "source.json": {
-                "url": "${{ steps.attest_source.outputs.bundle-url }}",
-                "integrity": "${SOURCE_INTEGRITY}"
-              },
-              "MODULE.bazel": {
-                "url": "${{ steps.attest_module.outputs.bundle-url }}",
-                "integrity": "${MODULE_INTEGRITY}"
-              },
-              "${ARCHIVE}": {
-                "url": "${{ steps.attest_archive.outputs.bundle-url }}",
-                "integrity": "${ARCHIVE_INTEGRITY}"
-              }
-            }
-          }
-          EOF
-
-      - name: Generate release notes
-        run: |
-          cat << 'EOF' > release_notes.md
-          ## Using Bzlmod
-
-          Add to `MODULE.bazel`:
-
-          ```starlark
-          bazel_dep(name = "rules_csharp", version = "${{ steps.package.outputs.version }}")
-          archive_override(
-              module_name = "rules_csharp",
-              urls = ["https://github.com/rulescsharp/rules_csharp/releases/download/${{ steps.package.outputs.tag }}/${{ steps.package.outputs.archive }}"],
-              strip_prefix = "rules_csharp-${{ steps.package.outputs.version }}",
-              integrity = "${{ steps.package.outputs.integrity }}",
-          )
-          ```
-          EOF
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.package.outputs.tag }}" \
-            "${{ steps.package.outputs.archive }}" \
+          gh release create "${GITHUB_REF_NAME}" \
+            "rules_csharp-${GITHUB_REF_NAME}.tar.gz" \
             MODULE.bazel \
             source.json \
-            attestations.json \
-            --title "${{ steps.package.outputs.tag }}" \
-            --notes-file release_notes.md
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
 
   publish_to_bcr:
     name: Publish to Bazel Central Registry
     needs: [release]
-    if: ${{ needs.release.outputs.has_bcr_token == 'true' }}
     uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v0.2.2
     with:
       tag_name: ${{ github.ref_name }}
       registry_fork: rulescsharp/bazel-central-registry
-      attest: false
+      attest: true
       draft: false
     secrets:
       publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
-
