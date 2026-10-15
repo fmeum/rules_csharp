@@ -286,7 +286,7 @@ def _sdk_exec_impl(repository_ctx):
 
     is_windows = "win" in rid
     dotnet_bin = "dotnet.exe" if is_windows else "dotnet"
-    worker_name = "CscWorker.exe" if is_windows else "CscWorker"
+    worker_name = "CscWorker.bat" if is_windows else "CscWorker"
 
     worker_src = repository_ctx.path(Label("//csharp/private/tools:CscWorker.cs"))
     repository_ctx.file("CscWorker.runtimeconfig.json", """{
@@ -626,7 +626,7 @@ def _csharp_toolchains_hub_impl(repository_ctx):
         tfm = version_to_tfm(version)
 
         for exec_p, exec_info in PLATFORMS.items():
-            worker_name = "CscWorker.exe" if "win" in exec_info["rid"] else "CscWorker"
+            worker_name = "CscWorker.bat" if "win" in exec_info["rid"] else "CscWorker"
             for target_p, target_info in PLATFORMS.items():
                 impl_name = "csharp_toolchain_{}_{}_{}".format(v_slug, exec_p, target_p)
                 tc_name = "toolchain_{}_{}_{}".format(v_slug, exec_p, target_p)

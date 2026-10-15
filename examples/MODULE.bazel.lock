@@ -190,7 +190,7 @@
   "moduleExtensions": {
     "@@rules_csharp+//csharp:extensions.bzl%csharp": {
       "general": {
-        "bzlTransitiveDigest": "/AAIeScw15l4TJBtzUAjM6UoWjAewohvt4cSlHsB+Bs=",
+        "bzlTransitiveDigest": "npW0f0EvpJ1mgOBzRmGsH/nxpY43c+Y8HovH1R5Xv1s=",
         "usagesDigest": "c2LakH3bpMum/Zp8SZPnpBf/N2oIYLYoZfAfC9YndJU=",
         "recordedInputs": [
           "REPO_MAPPING:rules_csharp+,bazel_tools bazel_tools"

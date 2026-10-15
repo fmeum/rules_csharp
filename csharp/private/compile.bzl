@@ -178,7 +178,8 @@ def _compile_impl(ctx, is_analyzer = False, extra_srcs = []):
         compiler_args = [toolchain.csc_dll.path.replace("\\", "/"), args]
     compile_env = dict(toolchain.dotnet_env) if hasattr(toolchain, "dotnet_env") and toolchain.dotnet_env else dict(SEALED_DOTNET_ENV)
     compile_env["DOTNET_ROOT"] = toolchain.dotnet_muxer.dirname
-    compile_env["PATH"] = "/usr/bin:/bin"
+    is_win = "win" in toolchain.host_rid
+    compile_env["PATH"] = "C:\\Windows\\System32;C:\\Windows" if is_win else "/usr/bin:/bin"
 
     ctx.actions.run(
         outputs = [out_dll, refout_dll, pdb],

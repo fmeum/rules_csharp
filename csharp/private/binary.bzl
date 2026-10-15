@@ -153,7 +153,8 @@ def _binary_common_impl(ctx, is_test = False):
 
     patch_env = dict(toolchain.dotnet_env) if hasattr(toolchain, "dotnet_env") and toolchain.dotnet_env else dict(SEALED_DOTNET_ENV)
     patch_env["DOTNET_ROOT"] = toolchain.dotnet_muxer.dirname
-    patch_env["PATH"] = "/usr/bin:/bin"
+    is_win = "win" in toolchain.host_rid
+    patch_env["PATH"] = "C:\\Windows\\System32;C:\\Windows" if is_win else "/usr/bin:/bin"
 
     ctx.actions.run(
         executable = toolchain.dotnet_muxer,
