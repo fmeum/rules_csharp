@@ -190,8 +190,8 @@ def _binary_common_impl(ctx, is_test = False):
 
     runfiles_symlinks = {}
     for f in toolchain.runtime_pack.to_list():
-        if "shared/Microsoft.NETCore.App/" in f.path:
-            idx = f.path.find("shared/Microsoft.NETCore.App/")
+        if "shared/" in f.path:
+            idx = f.path.find("shared/")
             runfiles_symlinks[prefix + f.path[idx:]] = f
         elif "host/fxr/" in f.path:
             runfiles_symlinks[prefix + f.basename] = f

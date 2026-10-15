@@ -14,7 +14,20 @@ jobs:
   release:
     name: Publish Release
     runs-on: ubuntu-latest
+    outputs:
+      has_bcr_token: ${{ steps.check_token.outputs.has_bcr_token }}
     steps:
+      - name: Check BCR publish token
+        id: check_token
+        env:
+          BCR_TOKEN: ${{ secrets.BCR_PUBLISH_TOKEN }}
+        run: |
+          if [ -n "${BCR_TOKEN}" ]; then
+            echo "has_bcr_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_bcr_token=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -121,11 +134,11 @@ jobs:
   publish_to_bcr:
     name: Publish to Bazel Central Registry
     needs: [release]
-    if: ${{ secrets.BCR_PUBLISH_TOKEN != '' }}
+    if: ${{ needs.release.outputs.has_bcr_token == 'true' }}
     uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v0.2.2
     with:
       tag_name: ${{ github.ref_name }}
-      bcr_fork_repo: rulescsharp/bazel-central-registry
+      registry_fork: rulescsharp/bazel-central-registry
       attest: true
     secrets:
       publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}

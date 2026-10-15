@@ -14,6 +14,7 @@ namespace RulesCsharp.Tools
             string? workspace = null;
             bool checkMode = false;
             bool roundTrip = false;
+            bool bootstrapLock = false;
 
             foreach (var arg in args)
             {
@@ -23,6 +24,8 @@ namespace RulesCsharp.Tools
                     checkMode = true;
                 else if (arg == "--round-trip")
                     roundTrip = true;
+                else if (arg == "--bootstrap-lock")
+                    bootstrapLock = true;
             }
 
             if (string.IsNullOrEmpty(workspace))
@@ -36,6 +39,11 @@ namespace RulesCsharp.Tools
 
             workspace = Path.GetFullPath(workspace);
             Console.WriteLine($"CsprojSync running in workspace: {workspace}");
+
+            if (bootstrapLock)
+            {
+                BootstrapLock(workspace);
+            }
 
             var csDirs = FindCsDirectories(workspace);
             Console.WriteLine($"Found {csDirs.Count} directories containing C# files.");
@@ -190,6 +198,103 @@ namespace RulesCsharp.Tools
             sb.AppendLine("  </ItemGroup>");
             sb.AppendLine("</Project>");
             return sb.ToString();
+        }
+
+        private static void BootstrapLock(string workspace)
+        {
+            var packages = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var csprojFiles = Directory.GetFiles(workspace, "*.csproj", SearchOption.AllDirectories)
+                .Where(p => !p.Contains("bazel-") && !p.Contains("/bin/") && !p.Contains("/obj/") && !p.Contains("\\bin\\") && !p.Contains("\\obj\\"));
+
+            foreach (var file in csprojFiles)
+            {
+                string content = File.ReadAllText(file);
+                var matches = Regex.Matches(content, @"<PackageReference\s+[^>]+>", RegexOptions.IgnoreCase);
+                foreach (Match m in matches)
+                {
+                    var idMatch = Regex.Match(m.Value, @"Include=""([^""]+)""", RegexOptions.IgnoreCase);
+                    if (idMatch.Success)
+                    {
+                        string id = idMatch.Groups[1].Value;
+                        var verMatch = Regex.Match(m.Value, @"Version=""([^""]+)""", RegexOptions.IgnoreCase);
+                        string ver = verMatch.Success ? verMatch.Groups[1].Value : "1.0.0";
+                        packages[id] = ver;
+                    }
+                }
+            }
+
+            string propsFile = Path.Combine(workspace, "Directory.Packages.props");
+            if (!File.Exists(propsFile))
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("<Project>");
+                sb.AppendLine("  <PropertyGroup>");
+                sb.AppendLine("    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>");
+                sb.AppendLine("  </PropertyGroup>");
+                sb.AppendLine("  <ItemGroup>");
+                foreach (var kvp in packages)
+                {
+                    sb.AppendLine($"    <PackageVersion Include=\"{kvp.Key}\" Version=\"{kvp.Value}\" />");
+                }
+                sb.AppendLine("  </ItemGroup>");
+                sb.AppendLine("</Project>");
+                File.WriteAllText(propsFile, sb.ToString(), Encoding.UTF8);
+                Console.WriteLine($"Bootstrapped: {propsFile}");
+            }
+
+            string lockFile = Path.Combine(workspace, "packages.lock.json");
+            if (!File.Exists(lockFile))
+            {
+                bool restored = false;
+                try
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo("dotnet", "restore --use-lock-file")
+                    {
+                        WorkingDirectory = workspace,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                    };
+                    using var proc = System.Diagnostics.Process.Start(psi);
+                    if (proc != null)
+                    {
+                        proc.WaitForExit();
+                        if (proc.ExitCode == 0 && File.Exists(lockFile))
+                        {
+                            restored = true;
+                            Console.WriteLine($"Restored lockfile via dotnet restore: {lockFile}");
+                        }
+                    }
+                }
+                catch { }
+
+                if (!restored)
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine("{");
+                    sb.AppendLine("  \"version\": 1,");
+                    sb.AppendLine("  \"dependencies\": {");
+                    sb.AppendLine("    \"net8.0\": {");
+                    int count = 0;
+                    foreach (var kvp in packages)
+                    {
+                        count++;
+                        string comma = count < packages.Count ? "," : "";
+                        sb.AppendLine($"      \"{kvp.Key}\": {{");
+                        sb.AppendLine("        \"type\": \"Direct\",");
+                        sb.AppendLine($"        \"requested\": \"[{kvp.Value}, )\",");
+                        sb.AppendLine($"        \"resolved\": \"{kvp.Value}\",");
+                        sb.AppendLine("        \"contentHash\": \"\",");
+                        sb.AppendLine("        \"dependencies\": {}");
+                        sb.AppendLine($"      }}{comma}");
+                    }
+                    sb.AppendLine("    }");
+                    sb.AppendLine("  }");
+                    sb.AppendLine("}");
+                    File.WriteAllText(lockFile, sb.ToString(), Encoding.UTF8);
+                    Console.WriteLine($"Synthesized lockfile: {lockFile}");
+                }
+            }
         }
 
         private static string Normalize(string s) => s.Replace("\r\n", "\n").Trim();

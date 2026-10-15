@@ -191,7 +191,7 @@
     "@@rules_csharp+//csharp:extensions.bzl%csharp": {
       "general": {
         "bzlTransitiveDigest": "cVpdQYsWJ1v2YehgTlB5FwHLihnCLSQA6VY9cTQmAcA=",
-        "usagesDigest": "pvyymGxzJVsSBbsxrfS/d/WzsL3lAZxhS3GoJDOBq7U=",
+        "usagesDigest": "c2LakH3bpMum/Zp8SZPnpBf/N2oIYLYoZfAfC9YndJU=",
         "recordedInputs": [
           "REPO_MAPPING:rules_csharp+,bazel_tools bazel_tools"
         ],

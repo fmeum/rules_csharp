@@ -1,4 +1,5 @@
-load("//csharp:defs.bzl", "csharp_binary", "csharp_library", "csharp_test")
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("//csharp:defs.bzl", "csharp_binary", "csharp_grpc_library", "csharp_library", "csharp_test")
 load(":linux_cross_transition.bzl", "linux_binary_collector")
 load(":test_helpers.bzl", "shell_test")
 
@@ -77,5 +78,36 @@ shell_test(
         "//tests/integration:packages.lock.json",
     ],
 )
+
+# Task 11: Enterprise Integration Tests
+csharp_test(
+    name = "web_test",
+    srcs = ["WebTest.cs"],
+    sdk = "Microsoft.NET.Sdk.Web",
+)
+
+proto_library(
+    name = "service_proto",
+    srcs = ["service.proto"],
+)
+
+csharp_grpc_library(
+    name = "service_cs_grpc",
+    proto = ":service_proto",
+    deps = ["@nuget//:Google.Protobuf"],
+)
+
+csharp_test(
+    name = "grpc_test",
+    srcs = ["GrpcTest.cs"],
+    deps = [":service_cs_grpc"],
+)
+
+csharp_test(
+    name = "mstest_suite",
+    srcs = ["MSTestSuite.cs"],
+    test_filter = "TestCategory=Unit",
+)
+
 
 

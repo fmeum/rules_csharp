@@ -107,5 +107,45 @@ fi
 
 # Verify --check passes now
 "$SYNC_TOOL" --workspace="$TEST_WS" --check
+
+# 5. Verify --bootstrap-lock creates Directory.Packages.props and packages.lock.json
+cat << 'EOF' > "$TEST_WS/src/SampleLib/SampleWithPkgs.csproj"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Serilog" Version="3.1.1" />
+  </ItemGroup>
+</Project>
+EOF
+
+"$SYNC_TOOL" --workspace="$TEST_WS" --bootstrap-lock
+
+PROPS="$TEST_WS/Directory.Packages.props"
+LOCK="$TEST_WS/packages.lock.json"
+
+if [[ ! -f "$PROPS" ]]; then
+    echo "FAILED: Directory.Packages.props was not created by --bootstrap-lock."
+    exit 1
+fi
+
+if [[ ! -f "$LOCK" ]]; then
+    echo "FAILED: packages.lock.json was not created by --bootstrap-lock."
+    exit 1
+fi
+
+if ! grep -q '<PackageVersion Include="Newtonsoft.Json" Version="13.0.3"' "$PROPS"; then
+    echo "FAILED: Newtonsoft.Json not found in bootstrapped Directory.Packages.props."
+    exit 1
+fi
+
+if ! grep -q '"Newtonsoft.Json"' "$LOCK"; then
+    echo "FAILED: Newtonsoft.Json not found in bootstrapped packages.lock.json."
+    exit 1
+fi
+echo "--bootstrap-lock verified successfully."
+
 echo "Round-trip synchronization verified successfully."
 exit 0
