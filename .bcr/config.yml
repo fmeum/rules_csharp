@@ -3,4 +3,4 @@ fixedReleaser:
   email: "rulescsharp@gmail.com"
 fixedSelfHostedRunner: false
 moduleRoots:
-  - ""
+  - "."
