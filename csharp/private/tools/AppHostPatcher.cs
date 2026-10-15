@@ -43,11 +43,18 @@ namespace RulesCsharp.Tools
                 return 1;
             }
 
-            byte[] data = File.ReadAllBytes(templatePath);
+            string resolvedTemplate = ResolveRunfile(templatePath);
+            if (!File.Exists(resolvedTemplate))
+            {
+                Console.Error.WriteLine($"AppHost template not found at '{templatePath}' (resolved: '{resolvedTemplate}')");
+                return 1;
+            }
+
+            byte[] data = File.ReadAllBytes(resolvedTemplate);
             int index = IndexOf(data, Placeholder);
             if (index == -1)
             {
-                Console.Error.WriteLine($"Placeholder not found in '{templatePath}'");
+                Console.Error.WriteLine($"Placeholder not found in '{resolvedTemplate}'");
                 return 1;
             }
 
@@ -101,6 +108,39 @@ namespace RulesCsharp.Tools
             }
 
             return 0;
+        }
+
+        private static string ResolveRunfile(string path)
+        {
+            if (File.Exists(path)) return path;
+
+            string? runfilesDir = Environment.GetEnvironmentVariable("RUNFILES_DIR");
+            if (!string.IsNullOrEmpty(runfilesDir))
+            {
+                string combined = Path.Combine(runfilesDir, path.Replace('\\', '/').TrimStart('/'));
+                if (File.Exists(combined)) return combined;
+            }
+
+            string? manifest = Environment.GetEnvironmentVariable("RUNFILES_MANIFEST_FILE");
+            if (!string.IsNullOrEmpty(manifest) && File.Exists(manifest))
+            {
+                string normPath = path.Replace('\\', '/').TrimStart('.', '/');
+                foreach (var line in File.ReadLines(manifest))
+                {
+                    int spaceIdx = line.IndexOf(' ');
+                    if (spaceIdx > 0)
+                    {
+                        string rpath = line.Substring(0, spaceIdx);
+                        if (rpath == normPath || rpath.EndsWith("/" + normPath) || normPath.EndsWith("/" + rpath))
+                        {
+                            string target = line.Substring(spaceIdx + 1).Trim();
+                            if (File.Exists(target)) return target;
+                        }
+                    }
+                }
+            }
+
+            return path;
         }
 
         private static int IndexOf(byte[] source, byte[] pattern)

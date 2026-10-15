@@ -190,7 +190,7 @@
   "moduleExtensions": {
     "@@rules_csharp+//csharp:extensions.bzl%csharp": {
       "general": {
-        "bzlTransitiveDigest": "cVpdQYsWJ1v2YehgTlB5FwHLihnCLSQA6VY9cTQmAcA=",
+        "bzlTransitiveDigest": "/AAIeScw15l4TJBtzUAjM6UoWjAewohvt4cSlHsB+Bs=",
         "usagesDigest": "c2LakH3bpMum/Zp8SZPnpBf/N2oIYLYoZfAfC9YndJU=",
         "recordedInputs": [
           "REPO_MAPPING:rules_csharp+,bazel_tools bazel_tools"
@@ -221,6 +221,34 @@
               "rid": "osx-arm64",
               "urls": [
                 "https://dotnetcli.azureedge.net/dotnet/Sdk/8.0.403/dotnet-sdk-8.0.403-osx-arm64.tar.gz"
+              ]
+            }
+          },
+          "dotnet_sdk_8_0_403_darwin_x86_64": {
+            "repoRuleId": "@@rules_csharp+//csharp:toolchains.bzl%sdk_exec",
+            "attributes": {
+              "archive_ext": "tar.gz",
+              "auth_patterns": {},
+              "dotnet_version": "8.0.403",
+              "integrity": "sha256-dMsEfqhP1xfQN5a0nmry4Z5Y2Xb65hVxCYURBs/pnF4=",
+              "platform": "darwin_x86_64",
+              "rid": "osx-x64",
+              "urls": [
+                "https://dotnetcli.azureedge.net/dotnet/Sdk/8.0.403/dotnet-sdk-8.0.403-osx-x64.tar.gz"
+              ]
+            }
+          },
+          "csharp_pack_8_0_403_darwin_x86_64": {
+            "repoRuleId": "@@rules_csharp+//csharp:toolchains.bzl%runtime_pack",
+            "attributes": {
+              "archive_ext": "tar.gz",
+              "auth_patterns": {},
+              "dotnet_version": "8.0.403",
+              "integrity": "sha256-dMsEfqhP1xfQN5a0nmry4Z5Y2Xb65hVxCYURBs/pnF4=",
+              "platform": "darwin_x86_64",
+              "rid": "osx-x64",
+              "urls": [
+                "https://dotnetcli.azureedge.net/dotnet/Sdk/8.0.403/dotnet-sdk-8.0.403-osx-x64.tar.gz"
               ]
             }
           },
@@ -336,6 +364,34 @@
               ]
             }
           },
+          "dotnet_sdk_9_0_200_darwin_x86_64": {
+            "repoRuleId": "@@rules_csharp+//csharp:toolchains.bzl%sdk_exec",
+            "attributes": {
+              "archive_ext": "tar.gz",
+              "auth_patterns": {},
+              "dotnet_version": "9.0.200",
+              "integrity": "sha256-nHHaP/zJviknMHLK44J8Aci4FCr2oTIvyODhHAky0sQ=",
+              "platform": "darwin_x86_64",
+              "rid": "osx-x64",
+              "urls": [
+                "https://dotnetcli.azureedge.net/dotnet/Sdk/9.0.200/dotnet-sdk-9.0.200-osx-x64.tar.gz"
+              ]
+            }
+          },
+          "csharp_pack_9_0_200_darwin_x86_64": {
+            "repoRuleId": "@@rules_csharp+//csharp:toolchains.bzl%runtime_pack",
+            "attributes": {
+              "archive_ext": "tar.gz",
+              "auth_patterns": {},
+              "dotnet_version": "9.0.200",
+              "integrity": "sha256-nHHaP/zJviknMHLK44J8Aci4FCr2oTIvyODhHAky0sQ=",
+              "platform": "darwin_x86_64",
+              "rid": "osx-x64",
+              "urls": [
+                "https://dotnetcli.azureedge.net/dotnet/Sdk/9.0.200/dotnet-sdk-9.0.200-osx-x64.tar.gz"
+              ]
+            }
+          },
           "dotnet_sdk_9_0_200_linux_arm64": {
             "repoRuleId": "@@rules_csharp+//csharp:toolchains.bzl%sdk_exec",
             "attributes": {
@@ -445,6 +501,34 @@
               "rid": "osx-arm64",
               "urls": [
                 "https://dotnetcli.azureedge.net/dotnet/Sdk/10.0.100/dotnet-sdk-10.0.100-osx-arm64.tar.gz"
+              ]
+            }
+          },
+          "dotnet_sdk_10_0_100_darwin_x86_64": {
+            "repoRuleId": "@@rules_csharp+//csharp:toolchains.bzl%sdk_exec",
+            "attributes": {
+              "archive_ext": "tar.gz",
+              "auth_patterns": {},
+              "dotnet_version": "10.0.100",
+              "integrity": "sha256-2P1uPy45PK0wB5TUOuJtAfnbMTVslTgbz7nT1/ZtGH4=",
+              "platform": "darwin_x86_64",
+              "rid": "osx-x64",
+              "urls": [
+                "https://dotnetcli.azureedge.net/dotnet/Sdk/10.0.100/dotnet-sdk-10.0.100-osx-x64.tar.gz"
+              ]
+            }
+          },
+          "csharp_pack_10_0_100_darwin_x86_64": {
+            "repoRuleId": "@@rules_csharp+//csharp:toolchains.bzl%runtime_pack",
+            "attributes": {
+              "archive_ext": "tar.gz",
+              "auth_patterns": {},
+              "dotnet_version": "10.0.100",
+              "integrity": "sha256-2P1uPy45PK0wB5TUOuJtAfnbMTVslTgbz7nT1/ZtGH4=",
+              "platform": "darwin_x86_64",
+              "rid": "osx-x64",
+              "urls": [
+                "https://dotnetcli.azureedge.net/dotnet/Sdk/10.0.100/dotnet-sdk-10.0.100-osx-x64.tar.gz"
               ]
             }
           },

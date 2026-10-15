@@ -262,22 +262,52 @@ set USERPROFILE=%SCRATCH%
 set APPDATA=%SCRATCH%
 
 set DOTNET_BIN=%SCRIPT_DIR%{dotnet_bin}
-if not exist "!DOTNET_BIN!" set DOTNET_BIN={dotnet_path}
-
 set VSTEST_DLL=%SCRIPT_DIR%vstest.console.dll
+set EXE_PATH=%SCRIPT_DIR%{exe_name}
+set MAIN_DLL_PATH=%SCRIPT_DIR%{main_dll_name}
+
+if not exist "!DOTNET_BIN!" (
+    if defined RUNFILES_MANIFEST_FILE if exist "%RUNFILES_MANIFEST_FILE%" (
+        for /f "usebackq tokens=1* delims= " %%A in ("%RUNFILES_MANIFEST_FILE%") do (
+            set "R_KEY=%%A"
+            if "!R_KEY:~-{dotnet_bin_len}!"=="{dotnet_bin}" (
+                if exist "%%B" set "DOTNET_BIN=%%B"
+            )
+            if "!R_KEY:~-18!"=="vstest.console.dll" (
+                if exist "%%B" set "VSTEST_DLL=%%B"
+            )
+            if "!R_KEY:~-{exe_name_len}!"=="{exe_name}" (
+                if exist "%%B" set "EXE_PATH=%%B"
+            )
+            if "!R_KEY:~-{main_dll_len}!"=="{main_dll_name}" (
+                if exist "%%B" set "MAIN_DLL_PATH=%%B"
+            )
+        )
+    )
+)
+
+if not exist "!DOTNET_BIN!" set DOTNET_BIN={dotnet_path}
 if not exist "!VSTEST_DLL!" set VSTEST_DLL={vstest_path}
+
+for %%I in ("!DOTNET_BIN!") do (
+    set "DOTNET_DIR=%%~dpI"
+    if exist "!DOTNET_DIR!dotnet.exe" (
+        set "DOTNET_ROOT=!DOTNET_DIR!"
+        if "!DOTNET_ROOT:~-1!"=="\\" set "DOTNET_ROOT=!DOTNET_ROOT:~0,-1!"
+    )
+)
 
 set FILTER=%TESTBRIDGE_TEST_ONLY%
 if "%FILTER%"=="" set FILTER={test_filter}
 if "{target_type}"=="library" (
     if not "%FILTER%"=="" (
-        "!DOTNET_BIN!" exec "!VSTEST_DLL!" "%SCRIPT_DIR%{main_dll_name}" --logger:console --TestCaseFilter:"%FILTER%" %*
+        "!DOTNET_BIN!" exec "!VSTEST_DLL!" "!MAIN_DLL_PATH!" --logger:console --TestCaseFilter:"%FILTER%" %*
     ) else (
-        "!DOTNET_BIN!" exec "!VSTEST_DLL!" "%SCRIPT_DIR%{main_dll_name}" --logger:console %*
+        "!DOTNET_BIN!" exec "!VSTEST_DLL!" "!MAIN_DLL_PATH!" --logger:console %*
     )
 ) else (
     if not "%FILTER%"=="" set TESTBRIDGE_TEST_ONLY=%FILTER%
-    "%SCRIPT_DIR%{exe_name}" %*
+    "!EXE_PATH!" %*
 )
 set EXIT_CODE=%ERRORLEVEL%
 if not "%COVERAGE_OUTPUT_FILE%"=="" (
@@ -290,9 +320,12 @@ rmdir /s /q "%SCRATCH%" 2>nul
 exit /b %EXIT_CODE%
 """.format(
                 dotnet_bin = toolchain.dotnet_muxer.basename,
+                dotnet_bin_len = len(toolchain.dotnet_muxer.basename),
                 dotnet_path = dotnet_path,
                 exe_name = exe_file.basename,
+                exe_name_len = len(exe_file.basename),
                 lcov_content = lcov_content,
+                main_dll_len = len(main_dll.basename),
                 main_dll_name = main_dll.basename,
                 target_type = target_type,
                 test_filter = test_filter,
@@ -321,26 +354,43 @@ export APPDATA="$SCRATCH"
 FILTER="${{TESTBRIDGE_TEST_ONLY:-{test_filter}}}"
 
 DOTNET_BIN="$DIR/{dotnet_bin}"
+VSTEST_DLL="$DIR/vstest.console.dll"
+EXE_PATH="$DIR/{exe_name}"
+MAIN_DLL_PATH="$DIR/{main_dll_name}"
+
+if [ ! -f "$DOTNET_BIN" ] && [ -n "${{RUNFILES_MANIFEST_FILE:-}}" ] && [ -f "$RUNFILES_MANIFEST_FILE" ]; then
+    while read -r rpath target; do
+        case "$rpath" in
+            *{dotnet_bin}) [ -f "$target" ] && DOTNET_BIN="$target" ;;
+            *vstest.console.dll) [ -f "$target" ] && VSTEST_DLL="$target" ;;
+            *{exe_name}) [ -f "$target" ] && EXE_PATH="$target" ;;
+            *{main_dll_name}) [ -f "$target" ] && MAIN_DLL_PATH="$target" ;;
+        esac
+    done < "$RUNFILES_MANIFEST_FILE"
+    if [ -f "$DOTNET_BIN" ]; then
+        export DOTNET_ROOT="$(cd "$(dirname "$DOTNET_BIN")" && pwd)"
+    fi
+fi
+
 if [ ! -f "$DOTNET_BIN" ]; then
     DOTNET_BIN="{dotnet_path}"
 fi
 
-VSTEST_DLL="$DIR/vstest.console.dll"
 if [ ! -f "$VSTEST_DLL" ]; then
     VSTEST_DLL="{vstest_path}"
 fi
 
 if [ "{target_type}" = "library" ]; then
     if [ -n "$FILTER" ]; then
-        "$DOTNET_BIN" exec "$VSTEST_DLL" "$DIR/{main_dll_name}" --logger:console --TestCaseFilter:"$FILTER" "$@"
+        "$DOTNET_BIN" exec "$VSTEST_DLL" "$MAIN_DLL_PATH" --logger:console --TestCaseFilter:"$FILTER" "$@"
     else
-        "$DOTNET_BIN" exec "$VSTEST_DLL" "$DIR/{main_dll_name}" --logger:console "$@"
+        "$DOTNET_BIN" exec "$VSTEST_DLL" "$MAIN_DLL_PATH" --logger:console "$@"
     fi
 else
     if [ -n "$FILTER" ]; then
         export TESTBRIDGE_TEST_ONLY="$FILTER"
     fi
-    "$DIR/{exe_name}" "$@"
+    "$EXE_PATH" "$@"
 fi
 EXIT_CODE=$?
 
