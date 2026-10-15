@@ -2,6 +2,20 @@
 
 load(":providers.bzl", "CSharpToolchainInfo")
 
+SEALED_DOTNET_ENV = {
+    "APPDATA": ".dotnet_scratch",
+    "DOTNET_CLI_HOME": ".dotnet_scratch",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "DOTNET_MULTILEVEL_LOOKUP": "0",
+    "DOTNET_NOLOGO": "1",
+    "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+    "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1",
+    "HOME": ".dotnet_scratch",
+    "MSBUILDDISABLENODEREUSE": "1",
+    "USERPROFILE": ".dotnet_scratch",
+    "VBCSCOMPILER_TTL": "0",
+}
+
 def _csharp_toolchain_impl(ctx):
     ref_files = []
     if ctx.attr.ref_pack:
@@ -21,16 +35,17 @@ def _csharp_toolchain_impl(ctx):
 
     toolchain_info = CSharpToolchainInfo(
         aspnetcore_ref_pack = depset(aspnet_files),
-        dotnet_muxer = ctx.file.dotnet_muxer,
         csc_dll = ctx.file.csc_dll,
         csc_worker = ctx.executable.csc_worker if ctx.attr.csc_worker else None,
         csc_worker_files = depset(worker_files),
-        ref_pack = depset(ref_files),
+        dotnet_env = dict(SEALED_DOTNET_ENV),
+        dotnet_muxer = ctx.file.dotnet_muxer,
         host_pack = ctx.file.host_pack,
+        host_rid = ctx.attr.host_rid,
+        ref_pack = depset(ref_files),
         runtime_pack = depset(runtime_files),
         target_framework = ctx.attr.target_framework,
         target_rid = ctx.attr.target_rid,
-        host_rid = ctx.attr.host_rid,
         vstest_dll = ctx.file.vstest_dll if hasattr(ctx.file, "vstest_dll") else None,
     )
 

@@ -190,8 +190,8 @@
   "moduleExtensions": {
     "//csharp:extensions.bzl%csharp": {
       "general": {
-        "bzlTransitiveDigest": "gESmjrDWBpsubndFb1qlXndjkKyRgpFAhdbjrpyfxzU=",
-        "usagesDigest": "TcAHQqWCcVydC2bwZtHL8L1xE5Tttxs81K6qkxNNcfU=",
+        "bzlTransitiveDigest": "cVpdQYsWJ1v2YehgTlB5FwHLihnCLSQA6VY9cTQmAcA=",
+        "usagesDigest": "AMSUynNNKlGfcFK7EDiSAeK/9aQ4nHLQo+ESjA7mpXc=",
         "recordedInputs": [
           "REPO_MAPPING:,bazel_tools bazel_tools"
         ],
@@ -532,6 +532,16 @@
               ]
             }
           },
+          "dotnet_toolchains": {
+            "repoRuleId": "@@//csharp:toolchains.bzl%csharp_toolchains_hub",
+            "attributes": {
+              "dotnet_versions": [
+                "8.0.403",
+                "9.0.200",
+                "10.0.100"
+              ]
+            }
+          },
           "csharp_toolchains": {
             "repoRuleId": "@@//csharp:toolchains.bzl%csharp_toolchains_hub",
             "attributes": {
@@ -547,7 +557,7 @@
     },
     "//csharp:extensions.bzl%nuget": {
       "general": {
-        "bzlTransitiveDigest": "gESmjrDWBpsubndFb1qlXndjkKyRgpFAhdbjrpyfxzU=",
+        "bzlTransitiveDigest": "cVpdQYsWJ1v2YehgTlB5FwHLihnCLSQA6VY9cTQmAcA=",
         "usagesDigest": "2BmArodbQIu5+5TyyJT7O86XZGwLIfHvDnUneBoCzPQ=",
         "recordedInputs": [
           "REPO_MAPPING:,bazel_tools bazel_tools",

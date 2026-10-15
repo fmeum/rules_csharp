@@ -1,6 +1,7 @@
 """Compilation rules for rules_csharp."""
 
 load(":providers.bzl", "CSharpAnalyzerInfo", "CSharpInfo", "CSharpToolchainInfo")
+load(":toolchain_impl.bzl", "SEALED_DOTNET_ENV")
 
 def _compile_impl(ctx, is_analyzer = False, extra_srcs = []):
     toolchain = ctx.toolchains["@rules_csharp//csharp:toolchain_type"].csharp_info
@@ -175,7 +176,9 @@ def _compile_impl(ctx, is_analyzer = False, extra_srcs = []):
     else:
         compiler_executable = toolchain.dotnet_muxer
         compiler_args = [toolchain.csc_dll.path.replace("\\", "/"), args]
-        execution_requirements = {}
+    compile_env = dict(toolchain.dotnet_env) if hasattr(toolchain, "dotnet_env") and toolchain.dotnet_env else dict(SEALED_DOTNET_ENV)
+    compile_env["DOTNET_ROOT"] = toolchain.dotnet_muxer.dirname
+    compile_env["PATH"] = "/usr/bin:/bin"
 
     ctx.actions.run(
         outputs = [out_dll, refout_dll, pdb],
@@ -186,6 +189,7 @@ def _compile_impl(ctx, is_analyzer = False, extra_srcs = []):
         progress_message = "Compiling C# %{label}",
         use_default_shell_env = False,
         execution_requirements = execution_requirements,
+        env = compile_env,
     )
 
     transitive_compile_refs = depset(

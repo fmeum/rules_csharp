@@ -212,4 +212,32 @@ def _proto_action_test_impl(ctx):
 
 proto_action_test = analysistest.make(_proto_action_test_impl)
 
+def _hermetic_sandbox_action_test_impl(ctx):
+    env = analysistest.begin(ctx)
+
+    actions = analysistest.target_actions(env)
+    compile_actions = [a for a in actions if a.mnemonic == "CSharpCompile"]
+    asserts.equals(env, 1, len(compile_actions))
+    compile_action = compile_actions[0]
+
+    action_env = compile_action.env
+    asserts.equals(env, "0", action_env.get("DOTNET_MULTILEVEL_LOOKUP"))
+    asserts.equals(env, "1", action_env.get("DOTNET_SKIP_FIRST_TIME_EXPERIENCE"))
+    asserts.equals(env, "1", action_env.get("DOTNET_CLI_TELEMETRY_OPTOUT"))
+    asserts.equals(env, "1", action_env.get("DOTNET_NOLOGO"))
+    asserts.equals(env, "0", action_env.get("VBCSCOMPILER_TTL"))
+    asserts.equals(env, "1", action_env.get("MSBUILDDISABLENODEREUSE"))
+    asserts.equals(env, "1", action_env.get("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"))
+    asserts.equals(env, ".dotnet_scratch", action_env.get("DOTNET_CLI_HOME"))
+    asserts.false(
+        env,
+        action_env.get("DOTNET_ROOT", "").startswith("/"),
+        "Expected DOTNET_ROOT to be relative path, got: %s" % action_env.get("DOTNET_ROOT"),
+    )
+
+    return analysistest.end(env)
+
+hermetic_sandbox_action_test = analysistest.make(_hermetic_sandbox_action_test_impl)
+
+
 

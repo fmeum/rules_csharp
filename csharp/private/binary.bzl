@@ -2,6 +2,7 @@
 
 load(":compile.bzl", "compile_impl")
 load(":providers.bzl", "CSharpAnalyzerInfo", "CSharpInfo", "CSharpToolchainInfo")
+load(":toolchain_impl.bzl", "SEALED_DOTNET_ENV")
 
 def _binary_common_impl(ctx, is_test = False):
     toolchain = ctx.toolchains["@rules_csharp//csharp:toolchain_type"].csharp_info
@@ -150,6 +151,10 @@ def _binary_common_impl(ctx, is_test = False):
     patcher_dll = patcher_info.runtime_dll
     patcher_runtimeconfig = ctx.file._patcher_runtimeconfig
 
+    patch_env = dict(toolchain.dotnet_env) if hasattr(toolchain, "dotnet_env") and toolchain.dotnet_env else dict(SEALED_DOTNET_ENV)
+    patch_env["DOTNET_ROOT"] = toolchain.dotnet_muxer.dirname
+    patch_env["PATH"] = "/usr/bin:/bin"
+
     ctx.actions.run(
         executable = toolchain.dotnet_muxer,
         inputs = [
@@ -164,10 +169,7 @@ def _binary_common_impl(ctx, is_test = False):
             "--assembly-name=" + main_dll.basename,
         ],
         outputs = [exe_file],
-        env = {
-            "PATH": "/usr/bin:/bin",
-            "DOTNET_ROOT": toolchain.dotnet_muxer.dirname,
-        },
+        env = patch_env,
         mnemonic = "CSharpAppHostPatch",
         progress_message = "Stamping AppHost %{label}",
         use_default_shell_env = False,
@@ -204,6 +206,9 @@ def _binary_common_impl(ctx, is_test = False):
 
     runfiles_symlinks[prefix + runtimeconfig_json.basename] = runtimeconfig_json
     runfiles_symlinks[prefix + deps_json.basename] = deps_json
+    runfiles_symlinks[prefix + toolchain.dotnet_muxer.basename] = toolchain.dotnet_muxer
+    if hasattr(toolchain, "vstest_dll") and toolchain.vstest_dll:
+        runfiles_symlinks[prefix + "vstest.console.dll"] = toolchain.vstest_dll
 
     extra_output_files = []
     for f in getattr(ctx.files, "content", []):
@@ -241,13 +246,34 @@ def _binary_common_impl(ctx, is_test = False):
             runner_content = """@echo off
 setlocal enabledelayedexpansion
 set SCRIPT_DIR=%~dp0
+set DOTNET_ROOT=%SCRIPT_DIR%
+set DOTNET_MULTILEVEL_LOOKUP=0
+set DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+set DOTNET_CLI_TELEMETRY_OPTOUT=1
+set DOTNET_NOLOGO=1
+set VBCSCOMPILER_TTL=0
+set MSBUILDDISABLENODEREUSE=1
+set DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+set SCRATCH=%TEMP%\\.dotnet_scratch_%RANDOM%
+if not exist "%SCRATCH%" mkdir "%SCRATCH%"
+set DOTNET_CLI_HOME=%SCRATCH%
+set HOME=%SCRATCH%
+set USERPROFILE=%SCRATCH%
+set APPDATA=%SCRATCH%
+
+set DOTNET_BIN=%SCRIPT_DIR%{dotnet_bin}
+if not exist "!DOTNET_BIN!" set DOTNET_BIN={dotnet_path}
+
+set VSTEST_DLL=%SCRIPT_DIR%vstest.console.dll
+if not exist "!VSTEST_DLL!" set VSTEST_DLL={vstest_path}
+
 set FILTER=%TESTBRIDGE_TEST_ONLY%
 if "%FILTER%"=="" set FILTER={test_filter}
 if "{target_type}"=="library" (
     if not "%FILTER%"=="" (
-        "{dotnet_path}" exec "{vstest_path}" "%SCRIPT_DIR%{main_dll_name}" --logger:console --TestCaseFilter:"%FILTER%" %*
+        "!DOTNET_BIN!" exec "!VSTEST_DLL!" "%SCRIPT_DIR%{main_dll_name}" --logger:console --TestCaseFilter:"%FILTER%" %*
     ) else (
-        "{dotnet_path}" exec "{vstest_path}" "%SCRIPT_DIR%{main_dll_name}" --logger:console %*
+        "!DOTNET_BIN!" exec "!VSTEST_DLL!" "%SCRIPT_DIR%{main_dll_name}" --logger:console %*
     )
 ) else (
     if not "%FILTER%"=="" set TESTBRIDGE_TEST_ONLY=%FILTER%
@@ -260,28 +286,55 @@ if not "%COVERAGE_OUTPUT_FILE%"=="" (
         echo {lcov_content}
     ) > "%COVERAGE_OUTPUT_FILE%"
 )
+rmdir /s /q "%SCRATCH%" 2>nul
 exit /b %EXIT_CODE%
 """.format(
-                test_filter = test_filter,
-                target_type = target_type,
+                dotnet_bin = toolchain.dotnet_muxer.basename,
                 dotnet_path = dotnet_path,
-                vstest_path = vstest_path,
-                main_dll_name = main_dll.basename,
                 exe_name = exe_file.basename,
                 lcov_content = lcov_content,
+                main_dll_name = main_dll.basename,
+                target_type = target_type,
+                test_filter = test_filter,
+                vstest_path = vstest_path,
             )
         else:
             runner_content = """#!/usr/bin/env bash
 set -e
 
 DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
+export DOTNET_ROOT="$(cd "$DIR" && pwd)"
+export DOTNET_MULTILEVEL_LOOKUP=0
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+export VBCSCOMPILER_TTL=0
+export MSBUILDDISABLENODEREUSE=1
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+SCRATCH="${{TMPDIR:-/tmp}}/.dotnet_scratch_$$"
+mkdir -p "$SCRATCH"
+export DOTNET_CLI_HOME="$SCRATCH"
+export HOME="$SCRATCH"
+export USERPROFILE="$SCRATCH"
+export APPDATA="$SCRATCH"
+
 FILTER="${{TESTBRIDGE_TEST_ONLY:-{test_filter}}}"
+
+DOTNET_BIN="$DIR/{dotnet_bin}"
+if [ ! -f "$DOTNET_BIN" ]; then
+    DOTNET_BIN="{dotnet_path}"
+fi
+
+VSTEST_DLL="$DIR/vstest.console.dll"
+if [ ! -f "$VSTEST_DLL" ]; then
+    VSTEST_DLL="{vstest_path}"
+fi
 
 if [ "{target_type}" = "library" ]; then
     if [ -n "$FILTER" ]; then
-        "{dotnet_path}" exec "{vstest_path}" "$DIR/{main_dll_name}" --logger:console --TestCaseFilter:"$FILTER" "$@"
+        "$DOTNET_BIN" exec "$VSTEST_DLL" "$DIR/{main_dll_name}" --logger:console --TestCaseFilter:"$FILTER" "$@"
     else
-        "{dotnet_path}" exec "{vstest_path}" "$DIR/{main_dll_name}" --logger:console "$@"
+        "$DOTNET_BIN" exec "$VSTEST_DLL" "$DIR/{main_dll_name}" --logger:console "$@"
     fi
 else
     if [ -n "$FILTER" ]; then
@@ -298,15 +351,17 @@ TN:
 COV_EOF
 fi
 
+rm -rf "$SCRATCH"
 exit $EXIT_CODE
 """.format(
-                test_filter = test_filter,
-                target_type = target_type,
+                dotnet_bin = toolchain.dotnet_muxer.basename,
                 dotnet_path = dotnet_path,
-                vstest_path = vstest_path,
-                main_dll_name = main_dll.basename,
                 exe_name = exe_file.basename,
                 lcov_content = lcov_content,
+                main_dll_name = main_dll.basename,
+                target_type = target_type,
+                test_filter = test_filter,
+                vstest_path = vstest_path,
             )
 
         ctx.actions.write(
@@ -341,7 +396,9 @@ exit $EXIT_CODE
     dotnet_root_rel = "../" + pack_ws if pack_ws else toolchain.dotnet_muxer.dirname
 
     if is_test:
-        test_env = dict(getattr(ctx.attr, "env", {}))
+        test_env = dict(toolchain.dotnet_env) if hasattr(toolchain, "dotnet_env") and toolchain.dotnet_env else dict(SEALED_DOTNET_ENV)
+        for k, v in getattr(ctx.attr, "env", {}).items():
+            test_env[k] = v
         test_env["DOTNET_ROOT"] = dotnet_root_rel
         providers.append(
             testing.TestEnvironment(

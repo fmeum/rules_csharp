@@ -117,3 +117,16 @@ jobs:
             attestations.json \
             --title "${{ steps.package.outputs.tag }}" \
             --notes-file release_notes.md
+
+  publish_to_bcr:
+    name: Publish to Bazel Central Registry
+    needs: [release]
+    if: ${{ secrets.BCR_PUBLISH_TOKEN != '' }}
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v0.2.2
+    with:
+      tag_name: ${{ github.ref_name }}
+      bcr_fork_repo: rulescsharp/bazel-central-registry
+      attest: true
+    secrets:
+      publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
+

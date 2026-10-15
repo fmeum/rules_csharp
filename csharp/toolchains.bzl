@@ -296,9 +296,26 @@ def _sdk_exec_impl(repository_ctx):
             content = """@echo off
 setlocal enabledelayedexpansion
 set SCRIPT_DIR=%~dp0
+set DOTNET_ROOT=%SCRIPT_DIR%
+set DOTNET_MULTILEVEL_LOOKUP=0
+set DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+set DOTNET_CLI_TELEMETRY_OPTOUT=1
+set DOTNET_NOLOGO=1
+set VBCSCOMPILER_TTL=0
+set MSBUILDDISABLENODEREUSE=1
+set DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+set SCRATCH=%TEMP%\\.dotnet_scratch_%RANDOM%
+if not exist "%SCRATCH%" mkdir "%SCRATCH%"
+set DOTNET_CLI_HOME=%SCRATCH%
+set HOME=%SCRATCH%
+set USERPROFILE=%SCRATCH%
+set APPDATA=%SCRATCH%
+
 if exist "%SCRIPT_DIR%CscWorker.dll" (
     "%SCRIPT_DIR%dotnet.exe" exec "%SCRIPT_DIR%CscWorker.dll" %*
-    exit /b !ERRORLEVEL!
+    set EXIT_CODE=!ERRORLEVEL!
+    rmdir /s /q "%SCRATCH%" 2>nul
+    exit /b !EXIT_CODE!
 )
 set CSC_DLL=
 for /f "delims=" %%f in ('dir /b /s "%SCRIPT_DIR%sdk\\*\\Roslyn\\bincore\\csc.dll" 2^>nul') do (
@@ -316,6 +333,9 @@ shift
 goto :loop
 :done
 "%SCRIPT_DIR%dotnet.exe" exec "%CSC_DLL%" %ARGS%
+set EXIT_CODE=%ERRORLEVEL%
+rmdir /s /q "%SCRATCH%" 2>nul
+exit /b %EXIT_CODE%
 """,
             executable = True,
         )
@@ -324,6 +344,26 @@ goto :loop
             worker_name,
             content = """#!/usr/bin/env bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export DOTNET_ROOT="$SCRIPT_DIR"
+export DOTNET_MULTILEVEL_LOOKUP=0
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+export VBCSCOMPILER_TTL=0
+export MSBUILDDISABLENODEREUSE=1
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+SCRATCH="${TMPDIR:-/tmp}/.dotnet_scratch_$$"
+mkdir -p "$SCRATCH"
+export DOTNET_CLI_HOME="$SCRATCH"
+export HOME="$SCRATCH"
+export USERPROFILE="$SCRATCH"
+export APPDATA="$SCRATCH"
+
+cleanup() {
+    rm -rf "$SCRATCH"
+}
+trap cleanup EXIT
+
 if [ -f "$SCRIPT_DIR/CscWorker.dll" ]; then
     exec "$SCRIPT_DIR/dotnet" exec "$SCRIPT_DIR/CscWorker.dll" "$@"
 fi

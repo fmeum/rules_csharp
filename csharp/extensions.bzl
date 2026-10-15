@@ -40,17 +40,32 @@ def _csharp_impl(module_ctx):
     auth_patterns = {}
 
     for mod in module_ctx.modules:
-        for tag in mod.tags.toolchain:
-            if tag.dotnet_versions:
-                dotnet_versions = tag.dotnet_versions
-            if tag.mirror_urls:
-                mirror_urls = tag.mirror_urls
-            if tag.url_templates:
-                url_templates = tag.url_templates
-            if tag.netrc:
-                netrc = tag.netrc
-            if tag.auth_patterns:
-                auth_patterns = tag.auth_patterns
+        if not mod.is_root:
+            for tag in mod.tags.toolchain:
+                if tag.dotnet_versions:
+                    dotnet_versions = tag.dotnet_versions
+                if tag.mirror_urls:
+                    mirror_urls = tag.mirror_urls
+                if tag.url_templates:
+                    url_templates = tag.url_templates
+                if tag.netrc:
+                    netrc = tag.netrc
+                if tag.auth_patterns:
+                    auth_patterns = tag.auth_patterns
+
+    for mod in module_ctx.modules:
+        if mod.is_root:
+            for tag in mod.tags.toolchain:
+                if tag.dotnet_versions:
+                    dotnet_versions = tag.dotnet_versions
+                if tag.mirror_urls:
+                    mirror_urls = tag.mirror_urls
+                if tag.url_templates:
+                    url_templates = tag.url_templates
+                if tag.netrc:
+                    netrc = tag.netrc
+                if tag.auth_patterns:
+                    auth_patterns = tag.auth_patterns
 
     for version in dotnet_versions:
         v_slug = version.replace(".", "_")
@@ -101,6 +116,10 @@ def _csharp_impl(module_ctx):
                 urls = candidate_urls,
             )
 
+    csharp_toolchains_hub(
+        name = "dotnet_toolchains",
+        dotnet_versions = dotnet_versions,
+    )
     csharp_toolchains_hub(
         name = "csharp_toolchains",
         dotnet_versions = dotnet_versions,

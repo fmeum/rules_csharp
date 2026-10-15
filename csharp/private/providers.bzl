@@ -27,6 +27,7 @@ CSharpToolchainInfo = provider(
         "csc_dll": "Host File for Roslyn compiler assembly.",
         "csc_worker": "Host executable File for persistent compilation worker.",
         "csc_worker_files": "Depset of files required by csc_worker.",
+        "dotnet_env": "Dictionary of sealed environment variables for hermetic dotnet execution.",
         "dotnet_muxer": "Host executable File for dotnet driver.",
         "host_pack": "Binary template File for target platform application host.",
         "host_rid": "Host runtime identifier string.",

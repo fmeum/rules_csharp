@@ -1,0 +1,15 @@
+module(
+    name = "rules_csharp_examples",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_csharp", version = "0.0.0")
+local_path_override(
+    module_name = "rules_csharp",
+    path = "..",
+)
+
+csharp = use_extension("@rules_csharp//csharp:extensions.bzl", "csharp")
+use_repo(csharp, "dotnet_toolchains")
+
+register_toolchains("@dotnet_toolchains//:all")

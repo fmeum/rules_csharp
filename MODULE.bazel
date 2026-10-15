@@ -14,12 +14,9 @@ use_repo(apple_support, "local_config_apple_cc_toolchains")
 register_toolchains("@local_config_apple_cc_toolchains//:all")
 
 csharp = use_extension("//csharp:extensions.bzl", "csharp")
-csharp.toolchain(
-    dotnet_versions = ["8.0.403", "9.0.200", "10.0.100"],
-)
-use_repo(csharp, "csharp_toolchains")
+use_repo(csharp, "dotnet_toolchains")
 
-register_toolchains("@csharp_toolchains//...:all")
+register_toolchains("@dotnet_toolchains//:all")
 
 nuget = use_extension("//csharp:extensions.bzl", "nuget")
 nuget.from_lock(

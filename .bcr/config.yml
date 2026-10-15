@@ -1,3 +1,6 @@
+fixedReleaser:
+  login: "rulescsharp"
+  email: "rulescsharp@gmail.com"
 fixedSelfHostedRunner: false
 moduleRoots:
   - ""
