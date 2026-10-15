@@ -139,7 +139,7 @@ jobs:
     with:
       tag_name: ${{ github.ref_name }}
       registry_fork: rulescsharp/bazel-central-registry
-      attest: true
+      attest: false
     secrets:
       publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
 
