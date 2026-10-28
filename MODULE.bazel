@@ -11,7 +11,11 @@ bazel_dep(name = "protobuf", version = "33.4")
 
 apple_support = use_extension("@apple_support//crosstool:setup.bzl", "apple_cc_configure_extension")
 use_repo(apple_support, "local_config_apple_cc_toolchains")
-register_toolchains("@local_config_apple_cc_toolchains//:all")
+
+register_toolchains(
+    "@local_config_apple_cc_toolchains//:all",
+    dev_dependency = True,
+)
 
 csharp = use_extension("//csharp:extensions.bzl", "csharp")
 use_repo(csharp, "dotnet_toolchains")
